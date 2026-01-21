@@ -1,0 +1,68 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "Paraguay_7109871",
+    "properties": {
+        "country": "Paraguay",
+        "chip_id": "7109871",
+        "datetime": "2018-10-31T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    -57.3082032134617,
+                    -24.330689807320418
+                ],
+                [
+                    -57.3082032134617,
+                    -24.2846960647735
+                ],
+                [
+                    -57.35419695600862,
+                    -24.2846960647735
+                ],
+                [
+                    -57.35419695600862,
+                    -24.330689807320418
+                ],
+                [
+                    -57.3082032134617,
+                    -24.330689807320418
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "../../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "../collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "S1Weak": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/WeaklyLabeled/S1Weak/Paraguay_7109871_S1Weak.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        }
+    },
+    "bbox": [
+        -57.35419695600862,
+        -24.330689807320418,
+        -57.3082032134617,
+        -24.2846960647735
+    ],
+    "collection": "sen1floods11_weak_labeled_source"
+}

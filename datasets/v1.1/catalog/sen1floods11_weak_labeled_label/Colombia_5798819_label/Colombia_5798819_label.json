@@ -1,0 +1,88 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "Colombia_5798819_label",
+    "properties": {
+        "country": "Colombia",
+        "chip_id": "5798819",
+        "label:description": "-1: NoData. 0: Not Water. 1: Water.",
+        "label:type": "raster",
+        "label:properties": null,
+        "label:classes": [
+            [
+                0,
+                1
+            ]
+        ],
+        "label:tasks": [
+            "classification"
+        ],
+        "datetime": "2018-08-22T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    -67.84077025670625,
+                    5.24328665034882
+                ],
+                [
+                    -67.84077025670625,
+                    5.289280392895742
+                ],
+                [
+                    -67.88676399925318,
+                    5.289280392895742
+                ],
+                [
+                    -67.88676399925318,
+                    5.24328665034882
+                ],
+                [
+                    -67.84077025670625,
+                    5.24328665034882
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "../../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "../collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "S2IndexLabelWeak": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/WeaklyLabeled/S2IndexLabelWeak/Colombia_5798819_S2IndexLabelWeak.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        },
+        "S1OtsuLabelWeak": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/WeaklyLabeled/S1OtsuLabelWeak/Colombia_5798819_S1OtsuLabelWeak.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        }
+    },
+    "bbox": [
+        -67.88676399925318,
+        5.24328665034882,
+        -67.84077025670625,
+        5.289280392895742
+    ],
+    "stac_extensions": [
+        "label"
+    ],
+    "collection": "sen1floods11_weak_labeled_label"
+}

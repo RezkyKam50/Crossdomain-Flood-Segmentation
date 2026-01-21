@@ -1,0 +1,88 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "Somalia_9539772_label",
+    "properties": {
+        "country": "Somalia",
+        "chip_id": "9539772",
+        "label:description": "-1: NoData. 0: Not Water. 1: Water.",
+        "label:type": "raster",
+        "label:properties": null,
+        "label:classes": [
+            [
+                0,
+                1
+            ]
+        ],
+        "label:tasks": [
+            "classification"
+        ],
+        "datetime": "2018-05-07T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    45.625792606544145,
+                    2.851612037909009
+                ],
+                [
+                    45.625792606544145,
+                    2.8976057804559283
+                ],
+                [
+                    45.579798863997226,
+                    2.8976057804559283
+                ],
+                [
+                    45.579798863997226,
+                    2.851612037909009
+                ],
+                [
+                    45.625792606544145,
+                    2.851612037909009
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "../../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "../collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "S2IndexLabelWeak": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/WeaklyLabeled/S2IndexLabelWeak/Somalia_9539772_S2IndexLabelWeak.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        },
+        "S1OtsuLabelWeak": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/WeaklyLabeled/S1OtsuLabelWeak/Somalia_9539772_S1OtsuLabelWeak.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        }
+    },
+    "bbox": [
+        45.579798863997226,
+        2.851612037909009,
+        45.625792606544145,
+        2.8976057804559283
+    ],
+    "stac_extensions": [
+        "label"
+    ],
+    "collection": "sen1floods11_weak_labeled_label"
+}

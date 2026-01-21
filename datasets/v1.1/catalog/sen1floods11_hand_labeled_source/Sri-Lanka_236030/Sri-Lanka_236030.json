@@ -1,0 +1,68 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "Sri-Lanka_236030",
+    "properties": {
+        "country": "Sri-Lanka",
+        "chip_id": "236030",
+        "datetime": "2017-05-30T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    80.67302442729681,
+                    5.979186531099535
+                ],
+                [
+                    80.67302442729681,
+                    6.025180273646455
+                ],
+                [
+                    80.62703068474988,
+                    6.025180273646455
+                ],
+                [
+                    80.62703068474988,
+                    5.979186531099535
+                ],
+                [
+                    80.67302442729681,
+                    5.979186531099535
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "../../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "../collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "S1Hand": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/HandLabeled/S1Hand/Sri-Lanka_236030_S1Hand.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        }
+    },
+    "bbox": [
+        80.62703068474988,
+        5.979186531099535,
+        80.67302442729681,
+        6.025180273646455
+    ],
+    "collection": "sen1floods11_hand_labeled_source"
+}

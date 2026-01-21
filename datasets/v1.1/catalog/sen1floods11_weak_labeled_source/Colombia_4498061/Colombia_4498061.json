@@ -1,0 +1,68 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "Colombia_4498061",
+    "properties": {
+        "country": "Colombia",
+        "chip_id": "4498061",
+        "datetime": "2018-08-22T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    -66.7829141781271,
+                    2.621643325174408
+                ],
+                [
+                    -66.7829141781271,
+                    2.667637067721331
+                ],
+                [
+                    -66.82890792067403,
+                    2.667637067721331
+                ],
+                [
+                    -66.82890792067403,
+                    2.621643325174408
+                ],
+                [
+                    -66.7829141781271,
+                    2.621643325174408
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "../../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "../collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "S1Weak": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/WeaklyLabeled/S1Weak/Colombia_4498061_S1Weak.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        }
+    },
+    "bbox": [
+        -66.82890792067403,
+        2.621643325174408,
+        -66.7829141781271,
+        2.667637067721331
+    ],
+    "collection": "sen1floods11_weak_labeled_source"
+}

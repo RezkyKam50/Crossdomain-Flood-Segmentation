@@ -1,0 +1,68 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "Spain_6199994",
+    "properties": {
+        "country": "Spain",
+        "chip_id": "6199994",
+        "datetime": "2019-09-17T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    -0.5979186531099535,
+                    38.266793799037025
+                ],
+                [
+                    -0.5979186531099535,
+                    38.312787541583944
+                ],
+                [
+                    -0.643912395656873,
+                    38.312787541583944
+                ],
+                [
+                    -0.643912395656873,
+                    38.266793799037025
+                ],
+                [
+                    -0.5979186531099535,
+                    38.266793799037025
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "../../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "../collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "S1Hand": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/HandLabeled/S1Hand/Spain_6199994_S1Hand.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        }
+    },
+    "bbox": [
+        -0.643912395656873,
+        38.266793799037025,
+        -0.5979186531099535,
+        38.312787541583944
+    ],
+    "collection": "sen1floods11_hand_labeled_source"
+}

@@ -1,0 +1,88 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "Mekong_4280546_label",
+    "properties": {
+        "country": "Mekong",
+        "chip_id": "4280546",
+        "label:description": "-1: NoData. 0: Not Water. 1: Water.",
+        "label:type": "raster",
+        "label:properties": null,
+        "label:classes": [
+            [
+                0,
+                1
+            ]
+        ],
+        "label:tasks": [
+            "classification"
+        ],
+        "datetime": "2018-08-05T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    105.23368294735182,
+                    13.016229140778215
+                ],
+                [
+                    105.23368294735182,
+                    13.062222883325138
+                ],
+                [
+                    105.1876892048049,
+                    13.062222883325138
+                ],
+                [
+                    105.1876892048049,
+                    13.016229140778215
+                ],
+                [
+                    105.23368294735182,
+                    13.016229140778215
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "../../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "../collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "S2IndexLabelWeak": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/WeaklyLabeled/S2IndexLabelWeak/Mekong_4280546_S2IndexLabelWeak.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        },
+        "S1OtsuLabelWeak": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/WeaklyLabeled/S1OtsuLabelWeak/Mekong_4280546_S1OtsuLabelWeak.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        }
+    },
+    "bbox": [
+        105.1876892048049,
+        13.016229140778215,
+        105.23368294735182,
+        13.062222883325138
+    ],
+    "stac_extensions": [
+        "label"
+    ],
+    "collection": "sen1floods11_weak_labeled_label"
+}

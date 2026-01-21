@@ -1,0 +1,93 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "Sri-Lanka_377277_label",
+    "properties": {
+        "country": "Sri-Lanka",
+        "chip_id": "377277",
+        "label:description": "-1: NoData. 0: Not Water. 1: Water.",
+        "label:type": "raster",
+        "label:properties": null,
+        "label:classes": [
+            [
+                0,
+                1
+            ]
+        ],
+        "label:tasks": [
+            "classification"
+        ],
+        "datetime": "2017-05-30T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    81.04097436767216,
+                    6.255148986381049
+                ],
+                [
+                    81.04097436767216,
+                    6.301142728927972
+                ],
+                [
+                    80.99498062512524,
+                    6.301142728927972
+                ],
+                [
+                    80.99498062512524,
+                    6.255148986381049
+                ],
+                [
+                    81.04097436767216,
+                    6.255148986381049
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "../../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "../collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "LabelHand": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/HandLabeled/LabelHand/Sri-Lanka_377277_LabelHand.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        },
+        "JRCWaterHand": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/HandLabeled/JRCWaterHand/Sri-Lanka_377277_JRCWaterHand.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        },
+        "S1OtsuLabelHand": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/HandLabeled/S1OtsuLabelHand/Sri-Lanka_377277_S1OtsuLabelHand.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        }
+    },
+    "bbox": [
+        80.99498062512524,
+        6.255148986381049,
+        81.04097436767216,
+        6.301142728927972
+    ],
+    "stac_extensions": [
+        "label"
+    ],
+    "collection": "sen1floods11_hand_labeled_label"
+}

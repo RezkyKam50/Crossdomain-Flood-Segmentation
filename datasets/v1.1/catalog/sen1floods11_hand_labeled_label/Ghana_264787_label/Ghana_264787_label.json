@@ -1,0 +1,93 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "Ghana_264787_label",
+    "properties": {
+        "country": "Ghana",
+        "chip_id": "264787",
+        "label:description": "-1: NoData. 0: Not Water. 1: Water.",
+        "label:type": "raster",
+        "label:properties": null,
+        "label:classes": [
+            [
+                0,
+                1
+            ]
+        ],
+        "label:tasks": [
+            "classification"
+        ],
+        "datetime": "2018-09-18T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    -0.36794994037535617,
+                    9.1987485093839
+                ],
+                [
+                    -0.36794994037535617,
+                    9.24474225193082
+                ],
+                [
+                    -0.4139436829222755,
+                    9.24474225193082
+                ],
+                [
+                    -0.4139436829222755,
+                    9.1987485093839
+                ],
+                [
+                    -0.36794994037535617,
+                    9.1987485093839
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "../../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "../collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "LabelHand": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/HandLabeled/LabelHand/Ghana_264787_LabelHand.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        },
+        "JRCWaterHand": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/HandLabeled/JRCWaterHand/Ghana_264787_JRCWaterHand.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        },
+        "S1OtsuLabelHand": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/HandLabeled/S1OtsuLabelHand/Ghana_264787_S1OtsuLabelHand.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        }
+    },
+    "bbox": [
+        -0.4139436829222755,
+        9.1987485093839,
+        -0.36794994037535617,
+        9.24474225193082
+    ],
+    "stac_extensions": [
+        "label"
+    ],
+    "collection": "sen1floods11_hand_labeled_label"
+}

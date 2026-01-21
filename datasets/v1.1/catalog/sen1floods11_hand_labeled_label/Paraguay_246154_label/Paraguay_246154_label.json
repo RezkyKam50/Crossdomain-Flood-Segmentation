@@ -1,0 +1,93 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "Paraguay_246154_label",
+    "properties": {
+        "country": "Paraguay",
+        "chip_id": "246154",
+        "label:description": "-1: NoData. 0: Not Water. 1: Water.",
+        "label:type": "raster",
+        "label:properties": null,
+        "label:classes": [
+            [
+                0,
+                1
+            ]
+        ],
+        "label:tasks": [
+            "classification"
+        ],
+        "datetime": "2018-10-31T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    -57.12422824327402,
+                    -23.96273986694506
+                ],
+                [
+                    -57.12422824327402,
+                    -23.91674612439814
+                ],
+                [
+                    -57.17022198582094,
+                    -23.91674612439814
+                ],
+                [
+                    -57.17022198582094,
+                    -23.96273986694506
+                ],
+                [
+                    -57.12422824327402,
+                    -23.96273986694506
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "../../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "../collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "LabelHand": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/HandLabeled/LabelHand/Paraguay_246154_LabelHand.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        },
+        "JRCWaterHand": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/HandLabeled/JRCWaterHand/Paraguay_246154_JRCWaterHand.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        },
+        "S1OtsuLabelHand": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/HandLabeled/S1OtsuLabelHand/Paraguay_246154_S1OtsuLabelHand.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        }
+    },
+    "bbox": [
+        -57.17022198582094,
+        -23.96273986694506,
+        -57.12422824327402,
+        -23.91674612439814
+    ],
+    "stac_extensions": [
+        "label"
+    ],
+    "collection": "sen1floods11_hand_labeled_label"
+}

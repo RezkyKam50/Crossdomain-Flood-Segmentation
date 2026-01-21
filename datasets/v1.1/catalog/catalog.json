@@ -1,0 +1,37 @@
+{
+    "id": "sen1floods11",
+    "stac_version": "1.0.0-beta.2",
+    "description": "Sen1Floods11: a georeferenced dataset to train and test deep learning flood algorithms for Sentinel-1",
+    "links": [
+        {
+            "rel": "root",
+            "href": "./catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "child",
+            "href": "./sen1floods11_hand_labeled_source/collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "child",
+            "href": "./sen1floods11_hand_labeled_label/collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "child",
+            "href": "./sen1floods11_weak_labeled_source/collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "child",
+            "href": "./sen1floods11_weak_labeled_label/collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "self",
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/catalog/catalog.json",
+            "type": "application/json"
+        }
+    ]
+}

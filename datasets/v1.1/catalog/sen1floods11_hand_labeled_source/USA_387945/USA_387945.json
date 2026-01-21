@@ -1,0 +1,68 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "USA_387945",
+    "properties": {
+        "country": "USA",
+        "chip_id": "387945",
+        "datetime": "2019-05-22T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    -95.02307210193568,
+                    40.06054975836688
+                ],
+                [
+                    -95.02307210193568,
+                    40.1065435009138
+                ],
+                [
+                    -95.06906584448261,
+                    40.1065435009138
+                ],
+                [
+                    -95.06906584448261,
+                    40.06054975836688
+                ],
+                [
+                    -95.02307210193568,
+                    40.06054975836688
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "../../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "../collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "S1Hand": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/HandLabeled/S1Hand/USA_387945_S1Hand.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        }
+    },
+    "bbox": [
+        -95.06906584448261,
+        40.06054975836688,
+        -95.02307210193568,
+        40.1065435009138
+    ],
+    "collection": "sen1floods11_hand_labeled_source"
+}

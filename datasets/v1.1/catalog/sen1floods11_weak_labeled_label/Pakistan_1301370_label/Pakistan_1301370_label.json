@@ -1,0 +1,88 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "Pakistan_1301370_label",
+    "properties": {
+        "country": "Pakistan",
+        "chip_id": "1301370",
+        "label:description": "-1: NoData. 0: Not Water. 1: Water.",
+        "label:type": "raster",
+        "label:properties": null,
+        "label:classes": [
+            [
+                0,
+                1
+            ]
+        ],
+        "label:tasks": [
+            "classification"
+        ],
+        "datetime": "2017-06-28T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    71.01433849244371,
+                    30.447857566060705
+                ],
+                [
+                    71.01433849244371,
+                    30.493851308607628
+                ],
+                [
+                    70.96834474989679,
+                    30.493851308607628
+                ],
+                [
+                    70.96834474989679,
+                    30.447857566060705
+                ],
+                [
+                    71.01433849244371,
+                    30.447857566060705
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "../../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "../collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "S2IndexLabelWeak": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/WeaklyLabeled/S2IndexLabelWeak/Pakistan_1301370_S2IndexLabelWeak.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        },
+        "S1OtsuLabelWeak": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/WeaklyLabeled/S1OtsuLabelWeak/Pakistan_1301370_S1OtsuLabelWeak.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        }
+    },
+    "bbox": [
+        70.96834474989679,
+        30.447857566060705,
+        71.01433849244371,
+        30.493851308607628
+    ],
+    "stac_extensions": [
+        "label"
+    ],
+    "collection": "sen1floods11_weak_labeled_label"
+}

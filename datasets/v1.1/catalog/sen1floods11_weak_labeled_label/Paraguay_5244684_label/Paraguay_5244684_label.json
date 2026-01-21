@@ -1,0 +1,88 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "Paraguay_5244684_label",
+    "properties": {
+        "country": "Paraguay",
+        "chip_id": "5244684",
+        "label:description": "-1: NoData. 0: Not Water. 1: Water.",
+        "label:type": "raster",
+        "label:properties": null,
+        "label:classes": [
+            [
+                0,
+                1
+            ]
+        ],
+        "label:tasks": [
+            "classification"
+        ],
+        "datetime": "2018-10-31T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    -56.756278302898664,
+                    -23.456808698928945
+                ],
+                [
+                    -56.756278302898664,
+                    -23.410814956382026
+                ],
+                [
+                    -56.802272045445584,
+                    -23.410814956382026
+                ],
+                [
+                    -56.802272045445584,
+                    -23.456808698928945
+                ],
+                [
+                    -56.756278302898664,
+                    -23.456808698928945
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "../../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "../collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "S2IndexLabelWeak": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/WeaklyLabeled/S2IndexLabelWeak/Paraguay_5244684_S2IndexLabelWeak.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        },
+        "S1OtsuLabelWeak": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/WeaklyLabeled/S1OtsuLabelWeak/Paraguay_5244684_S1OtsuLabelWeak.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        }
+    },
+    "bbox": [
+        -56.802272045445584,
+        -23.456808698928945,
+        -56.756278302898664,
+        -23.410814956382026
+    ],
+    "stac_extensions": [
+        "label"
+    ],
+    "collection": "sen1floods11_weak_labeled_label"
+}

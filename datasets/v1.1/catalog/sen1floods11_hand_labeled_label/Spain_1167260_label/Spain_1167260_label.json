@@ -1,0 +1,93 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "Spain_1167260_label",
+    "properties": {
+        "country": "Spain",
+        "chip_id": "1167260",
+        "label:description": "-1: NoData. 0: Not Water. 1: Water.",
+        "label:type": "raster",
+        "label:properties": null,
+        "label:classes": [
+            [
+                0,
+                1
+            ]
+        ],
+        "label:tasks": [
+            "classification"
+        ],
+        "datetime": "2019-09-17T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    -0.7818936232976317,
+                    38.12881257139627
+                ],
+                [
+                    -0.7818936232976317,
+                    38.174806313943186
+                ],
+                [
+                    -0.827887365844551,
+                    38.174806313943186
+                ],
+                [
+                    -0.827887365844551,
+                    38.12881257139627
+                ],
+                [
+                    -0.7818936232976317,
+                    38.12881257139627
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "../../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "../collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "LabelHand": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/HandLabeled/LabelHand/Spain_1167260_LabelHand.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        },
+        "JRCWaterHand": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/HandLabeled/JRCWaterHand/Spain_1167260_JRCWaterHand.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        },
+        "S1OtsuLabelHand": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/HandLabeled/S1OtsuLabelHand/Spain_1167260_S1OtsuLabelHand.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        }
+    },
+    "bbox": [
+        -0.827887365844551,
+        38.12881257139627,
+        -0.7818936232976317,
+        38.174806313943186
+    ],
+    "stac_extensions": [
+        "label"
+    ],
+    "collection": "sen1floods11_hand_labeled_label"
+}

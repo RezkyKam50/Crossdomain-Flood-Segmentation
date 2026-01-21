@@ -1,0 +1,68 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "Mekong_6110106",
+    "properties": {
+        "country": "Mekong",
+        "chip_id": "6110106",
+        "datetime": "2018-08-05T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    104.68175803678879,
+                    12.694272942949778
+                ],
+                [
+                    104.68175803678879,
+                    12.740266685496701
+                ],
+                [
+                    104.63576429424187,
+                    12.740266685496701
+                ],
+                [
+                    104.63576429424187,
+                    12.694272942949778
+                ],
+                [
+                    104.68175803678879,
+                    12.694272942949778
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "../../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "../collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "S1Weak": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/WeaklyLabeled/S1Weak/Mekong_6110106_S1Weak.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        }
+    },
+    "bbox": [
+        104.63576429424187,
+        12.694272942949778,
+        104.68175803678879,
+        12.740266685496701
+    ],
+    "collection": "sen1floods11_weak_labeled_source"
+}

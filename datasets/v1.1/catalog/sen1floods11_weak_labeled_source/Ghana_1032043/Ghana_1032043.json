@@ -1,0 +1,68 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "Ghana_1032043",
+    "properties": {
+        "country": "Ghana",
+        "chip_id": "1032043",
+        "datetime": "2018-09-18T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    -0.13798122764075846,
+                    8.27887365844551
+                ],
+                [
+                    -0.13798122764075846,
+                    8.32486740099243
+                ],
+                [
+                    -0.18397497018767783,
+                    8.32486740099243
+                ],
+                [
+                    -0.18397497018767783,
+                    8.27887365844551
+                ],
+                [
+                    -0.13798122764075846,
+                    8.27887365844551
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "../../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "../collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "S1Weak": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/WeaklyLabeled/S1Weak/Ghana_1032043_S1Weak.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        }
+    },
+    "bbox": [
+        -0.18397497018767783,
+        8.27887365844551,
+        -0.13798122764075846,
+        8.32486740099243
+    ],
+    "collection": "sen1floods11_weak_labeled_source"
+}

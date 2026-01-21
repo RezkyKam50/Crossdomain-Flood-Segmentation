@@ -1,0 +1,68 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "India_7629630",
+    "properties": {
+        "country": "India",
+        "chip_id": "7629630",
+        "datetime": "2016-08-12T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    93.73524731062194,
+                    26.400408221931787
+                ],
+                [
+                    93.73524731062194,
+                    26.44640196447871
+                ],
+                [
+                    93.68925356807502,
+                    26.44640196447871
+                ],
+                [
+                    93.68925356807502,
+                    26.400408221931787
+                ],
+                [
+                    93.73524731062194,
+                    26.400408221931787
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "../../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "../collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "S1Weak": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/WeaklyLabeled/S1Weak/India_7629630_S1Weak.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        }
+    },
+    "bbox": [
+        93.68925356807502,
+        26.400408221931787,
+        93.73524731062194,
+        26.44640196447871
+    ],
+    "collection": "sen1floods11_weak_labeled_source"
+}

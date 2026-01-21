@@ -1,0 +1,68 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "USA_4866517",
+    "properties": {
+        "country": "USA",
+        "chip_id": "4866517",
+        "datetime": "2019-05-22T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    -94.51714093391958,
+                    39.278656135069255
+                ],
+                [
+                    -94.51714093391958,
+                    39.324649877616174
+                ],
+                [
+                    -94.5631346764665,
+                    39.324649877616174
+                ],
+                [
+                    -94.5631346764665,
+                    39.278656135069255
+                ],
+                [
+                    -94.51714093391958,
+                    39.278656135069255
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "../../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "../collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "S1Weak": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/WeaklyLabeled/S1Weak/USA_4866517_S1Weak.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        }
+    },
+    "bbox": [
+        -94.5631346764665,
+        39.278656135069255,
+        -94.51714093391958,
+        39.324649877616174
+    ],
+    "collection": "sen1floods11_weak_labeled_source"
+}

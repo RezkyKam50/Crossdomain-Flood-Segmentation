@@ -1,0 +1,68 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "Pakistan_4056020",
+    "properties": {
+        "country": "Pakistan",
+        "chip_id": "4056020",
+        "datetime": "2017-06-28T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    71.38228843281908,
+                    32.3336010104844
+                ],
+                [
+                    71.38228843281908,
+                    32.37959475303133
+                ],
+                [
+                    71.33629469027215,
+                    32.37959475303133
+                ],
+                [
+                    71.33629469027215,
+                    32.3336010104844
+                ],
+                [
+                    71.38228843281908,
+                    32.3336010104844
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "../../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "../collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "S1Weak": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/WeaklyLabeled/S1Weak/Pakistan_4056020_S1Weak.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        }
+    },
+    "bbox": [
+        71.33629469027215,
+        32.3336010104844,
+        71.38228843281908,
+        32.37959475303133
+    ],
+    "collection": "sen1floods11_weak_labeled_source"
+}

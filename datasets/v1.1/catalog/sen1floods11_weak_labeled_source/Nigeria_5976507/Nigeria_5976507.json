@@ -1,0 +1,68 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "Nigeria_5976507",
+    "properties": {
+        "country": "Nigeria",
+        "chip_id": "5976507",
+        "datetime": "2018-09-21T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    5.7492178183649365,
+                    8.738811083914705
+                ],
+                [
+                    5.7492178183649365,
+                    8.784804826461624
+                ],
+                [
+                    5.703224075818017,
+                    8.784804826461624
+                ],
+                [
+                    5.703224075818017,
+                    8.738811083914705
+                ],
+                [
+                    5.7492178183649365,
+                    8.738811083914705
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "../../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "../collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "S1Weak": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/WeaklyLabeled/S1Weak/Nigeria_5976507_S1Weak.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        }
+    },
+    "bbox": [
+        5.703224075818017,
+        8.738811083914705,
+        5.7492178183649365,
+        8.784804826461624
+    ],
+    "collection": "sen1floods11_weak_labeled_source"
+}

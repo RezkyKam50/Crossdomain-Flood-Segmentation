@@ -1,0 +1,68 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "Bolivia_195474",
+    "properties": {
+        "country": "Bolivia",
+        "chip_id": "195474",
+        "datetime": "2018-02-15T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    -65.31111441662568,
+                    -15.407903753218033
+                ],
+                [
+                    -65.31111441662568,
+                    -15.361910010671114
+                ],
+                [
+                    -65.35710815917261,
+                    -15.361910010671114
+                ],
+                [
+                    -65.35710815917261,
+                    -15.407903753218033
+                ],
+                [
+                    -65.31111441662568,
+                    -15.407903753218033
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "../../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "../collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "S1Hand": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/HandLabeled/S1Hand/Bolivia_195474_S1Hand.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        }
+    },
+    "bbox": [
+        -65.35710815917261,
+        -15.407903753218033,
+        -65.31111441662568,
+        -15.361910010671114
+    ],
+    "collection": "sen1floods11_hand_labeled_source"
+}

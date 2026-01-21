@@ -1,0 +1,68 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "Somalia_205466",
+    "properties": {
+        "country": "Somalia",
+        "chip_id": "205466",
+        "datetime": "2018-05-07T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    45.671786349091064,
+                    4.047449344128916
+                ],
+                [
+                    45.671786349091064,
+                    4.093443086675835
+                ],
+                [
+                    45.625792606544145,
+                    4.093443086675835
+                ],
+                [
+                    45.625792606544145,
+                    4.047449344128916
+                ],
+                [
+                    45.671786349091064,
+                    4.047449344128916
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "../../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "../collection.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "S1Hand": {
+            "href": "https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/HandLabeled/S1Hand/Somalia_205466_S1Hand.tif",
+            "type": "image/tiff; application=geotiff",
+            "title": "GeoTiff"
+        }
+    },
+    "bbox": [
+        45.625792606544145,
+        4.047449344128916,
+        45.671786349091064,
+        4.093443086675835
+    ],
+    "collection": "sen1floods11_hand_labeled_source"
+}
