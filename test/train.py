@@ -104,7 +104,6 @@ def preproc():
     return transforms, train_transforms
 
 def train():
-
     transforms, train_transforms = preproc()
     trainer, checkpoint_callback = setup()
 
