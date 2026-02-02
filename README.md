@@ -1,6 +1,3 @@
-Source code for the paper **Loss-Optimized Flood Segmentation in Cloud-Affected Sentinel-2 Imagery and
-Cross-Resolution Domain Shift: From U-Net Encoder–Decoder to the Prithvi Hybrid Model**
-
 Our study focuses on domain shift for different geographical location from opposing training data for popular segmentation models: U-Net, Prithvi and U-Prithvi. The experiment suggests that the choice of loss function largely determine how well the model performs on Out-Of Distribution (OOD) inference for real world deployment in flood segmentation, which is a modern concern regarding climate change globally.
 
 Primarily, real world deployment on this context spans around different satellite sensors and varying resolution, this codebase provides the hands-on methodology to reproduce the findings and help geoinformatics researchers/engineers for their application.
