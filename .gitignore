@@ -13,6 +13,8 @@ output/
 *.pth
 *.pt
 prithvi
+prithvi20
+pub
 cache
 events.out.tfevents.*
 *.zip
