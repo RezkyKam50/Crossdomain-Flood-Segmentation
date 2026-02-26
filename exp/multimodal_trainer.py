@@ -386,7 +386,7 @@ def main(args):
     bolivia_loader = get_loader_MM(args.data_path, DatasetType.BOLIVIA.value, args)
  
     models = {
-        "DSUnetShuffle": DSGhostUnet(
+        "DSUnetCBAM": DSGhostUnet(
             cfg=Config_DSUnet, 
             use_prithvi=False
         )
