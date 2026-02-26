@@ -368,7 +368,7 @@ def main(args):
     logger.info(f'Using device: {device}')
     
     args.version = f"{args.version}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    base_log_dir = f'./logs/Multimodal_{args.epochs}E_{args.loss_func.upper()}'
+    base_log_dir = f'./logs/Multimodal_{args.epochs}E_{args.loss_func.upper()}_2MODAL'
     os.makedirs(base_log_dir, exist_ok=True)
     
     logger.info("Loading datasets...")
@@ -386,11 +386,11 @@ def main(args):
     bolivia_loader = get_loader_MM(args.data_path, DatasetType.BOLIVIA.value, args)
  
     models = {
-        # "DSUnetSqueezeExc": DSGhostUnet(
-        #     cfg=Config_DSUnet, 
-        #     use_prithvi=False,
-        #     attn_scheme="SE"
-        # ),
+        "DSUnetSqueezeExc": DSGhostUnet(
+            cfg=Config_DSUnet, 
+            use_prithvi=False,
+            attn_scheme="SE"
+        ),
         "DSUnetCoord": DSGhostUnet(
             cfg=Config_DSUnet, 
             use_prithvi=False,
