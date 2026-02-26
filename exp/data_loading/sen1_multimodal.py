@@ -243,18 +243,20 @@ def get_train_loader_MM(data_path, args):
     )
     return train_loader
 
+
+def collate_fn(batch):
+    sar_batch = torch.cat([item[0] for item in batch], 0)
+    optical_batch = torch.cat([item[1] for item in batch], 0)
+    elevation_batch = torch.cat([item[2] for item in batch], 0)
+    labels_batch = torch.cat([item[3] for item in batch], 0)
+    water_batch = torch.cat([item[4] for item in batch], 0)
+    return sar_batch, optical_batch, elevation_batch, labels_batch, water_batch
+
+
 def get_test_loader_MM(data_path, type):
     valid_data = load_dual_flood_data_with_aux(data_path, type)
     valid_dataset = InMemoryDataset(valid_data, processTestMM)
-    
-    def collate_fn(batch):
-        sar_batch = torch.cat([item[0] for item in batch], 0)
-        optical_batch = torch.cat([item[1] for item in batch], 0)
-        elevation_batch = torch.cat([item[2] for item in batch], 0)
-        labels_batch = torch.cat([item[3] for item in batch], 0)
-        water_batch = torch.cat([item[4] for item in batch], 0)
-        return sar_batch, optical_batch, elevation_batch, labels_batch, water_batch
-    
+
     valid_loader = torch.utils.data.DataLoader(
         valid_dataset, 
         batch_size=3, 

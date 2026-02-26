@@ -387,7 +387,7 @@ def main(args):
  
     models = {
         "DSUnetCrissCross": DSGhostUnet(
-            cfg=Config_DSUnet,
+            cfg=Config_DSUnet, 
             use_prithvi=False
         )
     }
