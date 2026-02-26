@@ -265,8 +265,8 @@ class Up(nn.Module):
         self.conv = conv_block(in_ch, out_ch)
 
         # self.skip_attn = SEAttention(in_ch // 2)
-        # self.skip_attn = CoordAtt(in_ch // 2, in_ch // 2)
-        self.skip_attn = CBAMBlock(in_ch // 2)
+        self.skip_attn = CoordAtt(in_ch // 2, in_ch // 2)
+        # self.skip_attn = CBAMBlock(in_ch // 2)
         # self.skip_attn = ShuffleAttention(in_ch // 2)
         # self.skip_attn = CrissCrossAttention(in_ch // 2)
 
