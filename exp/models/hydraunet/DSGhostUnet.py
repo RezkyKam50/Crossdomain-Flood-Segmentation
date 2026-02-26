@@ -12,7 +12,7 @@ from models.hydraunet.Attention import *
 # Reference from DS_Unet https://github.com/SebastianHafner/DS_UNet/blob/master/utils/networks.py
 class DSGhostUnet(nn.Module):
 
-    def __init__(self, cfg, use_prithvi=None):
+    def __init__(self, cfg, use_prithvi=None, attn_scheme=None):
         super(DSGhostUnet, self).__init__()
         assert (cfg.DATASET.MODE == 'fusion')
         self._cfg = cfg
@@ -22,13 +22,13 @@ class DSGhostUnet(nn.Module):
         # sentinel-1 unet stream
         n_s1_bands = len(cfg.DATASET.SENTINEL1_BANDS)
         s1_in = n_s1_bands 
-        self.s1_stream = UNet(cfg, n_channels=s1_in , n_classes=out, topology=topology, enable_outc=False)
+        self.s1_stream = UNet(cfg, n_channels=s1_in , n_classes=out, topology=topology, enable_outc=False, attn_scheme=attn_scheme)
         self.n_s1_bands = n_s1_bands
 
         # sentinel-2 unet stream
         n_s2_bands = len(cfg.DATASET.SENTINEL2_BANDS)
         s2_in = n_s2_bands  
-        self.s2_stream = UNet(cfg, n_channels=s2_in, n_classes=out, topology=topology, enable_outc=False)
+        self.s2_stream = UNet(cfg, n_channels=s2_in, n_classes=out, topology=topology, enable_outc=False, attn_scheme=attn_scheme)
         self.n_s2_bands = n_s2_bands
 
         # attention block
@@ -105,7 +105,7 @@ class DSGhostUnet(nn.Module):
 
 
 class UNet(nn.Module):
-    def __init__(self, cfg, n_channels=None, n_classes=None, topology=None, enable_outc=True):
+    def __init__(self, cfg, n_channels=None, n_classes=None, topology=None, enable_outc=True, attn_scheme=None):
 
         self._cfg = cfg
 
@@ -148,7 +148,7 @@ class UNet(nn.Module):
             in_dim = up_topo[x1_idx] * 2
             out_dim = up_topo[x2_idx]
 
-            layer = Up(in_dim, out_dim, DoubleConv)
+            layer = Up(in_dim, out_dim, DoubleConv, attn_scheme=attn_scheme)
 
             print(f'up{idx + 1}: in {in_dim}, out {out_dim}')
             up_dict[f'up{idx + 1}'] = layer
@@ -258,17 +258,22 @@ class Down(nn.Module):
 
 
 class Up(nn.Module):
-    def __init__(self, in_ch, out_ch, conv_block):
+    def __init__(self, in_ch, out_ch, conv_block, attn_scheme=None):
         super(Up, self).__init__()
 
         self.up = nn.ConvTranspose2d(in_ch // 2, in_ch // 2, 2, stride=2)
         self.conv = conv_block(in_ch, out_ch)
 
-        self.skip_attn = SEAttention(in_ch // 2)
-        # self.skip_attn = CoordAtt(in_ch // 2, in_ch // 2)
-        # self.skip_attn = CBAMBlock(in_ch // 2)
-        # self.skip_attn = ShuffleAttention(in_ch // 2)
-        # self.skip_attn = CrissCrossAttention(in_ch // 2)
+        if attn_scheme == "SE":
+            self.skip_attn = SEAttention(in_ch // 2)
+        elif attn_scheme == "COORD":
+            self.skip_attn = CoordAtt(in_ch // 2, in_ch // 2)
+        elif attn_scheme == "CBAM":
+            self.skip_attn = CBAMBlock(in_ch // 2)
+        elif attn_scheme == "SHUFFLE":
+            self.skip_attn = ShuffleAttention(in_ch // 2)
+        elif attn_scheme == "CRICRO":
+            self.skip_attn = CrissCrossAttention(in_ch // 2)
 
     def forward(self, x1, x2):
         x1 = self.up(x1)

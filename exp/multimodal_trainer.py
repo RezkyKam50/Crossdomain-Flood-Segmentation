@@ -386,9 +386,30 @@ def main(args):
     bolivia_loader = get_loader_MM(args.data_path, DatasetType.BOLIVIA.value, args)
  
     models = {
-        "DSUnetSqueezeExc": DSGhostUnet(
+        # "DSUnetSqueezeExc": DSGhostUnet(
+        #     cfg=Config_DSUnet, 
+        #     use_prithvi=False,
+        #     attn_scheme="SE"
+        # ),
+        "DSUnetCoord": DSGhostUnet(
             cfg=Config_DSUnet, 
-            use_prithvi=False
+            use_prithvi=False,
+            attn_scheme="COORD"
+        ),
+        "DSUnetCBAM": DSGhostUnet(
+            cfg=Config_DSUnet, 
+            use_prithvi=False,
+            attn_scheme="CBAM"
+        ),
+        "DSUnetShuffle": DSGhostUnet(
+            cfg=Config_DSUnet, 
+            use_prithvi=False,
+            attn_scheme="SHUFFLE"
+        ),
+        "DSUnetCrissCross": DSGhostUnet(
+            cfg=Config_DSUnet, 
+            use_prithvi=False,
+            attn_scheme="CRICRO"
         )
     }
 
