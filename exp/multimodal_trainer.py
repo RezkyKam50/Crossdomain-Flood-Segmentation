@@ -19,6 +19,8 @@ from models.hydraunet.config import (
     Config_HydraUnet3P # Triple Stream | S1, S2, DEM (UNet3+)
 )
 
+from models.evanet.eva_net_model import EvaNet
+ 
 
 import os
 from tqdm import tqdm
@@ -115,8 +117,10 @@ def train_model(model, loader, optimizer, criterion, epoch, device, accumulation
 
         with autocast(device_type="cuda", dtype=torch.bfloat16):
             outputs = model(sar_imgs, optical_imgs, elevation_imgs, water_occur)   # s1, s2, dem
+            # outputs = model(optical_imgs, elevation_imgs) # for EvaNet
             targets = masks.squeeze(1) if len(masks.shape) > 3 else masks
             loss = criterion(outputs, targets.long()) / accumulation_steps
+ 
             
         loss.backward()
          
@@ -167,9 +171,11 @@ def test(model, loader, criterion, device):
             
             # Pass different modalities to different streams
             predictions = model(sar_imgs, optical_imgs, elevation_imgs, water_occur)
-
+            # predictions = model(optical_imgs, elevation_imgs) # for EvaNet
+ 
             targets = masks.squeeze(1).long() if len(masks.shape) > 3 else masks.long()
             loss = criterion(predictions, targets)
+ 
             
             metrics = computeMetrics(predictions, masks, device, criterion)
             metricss = {k: metricss.get(k, 0) + v for k, v in metrics.items()}
@@ -380,104 +386,10 @@ def main(args):
     bolivia_loader = get_loader_MM(args.data_path, DatasetType.BOLIVIA.value, args)
  
     models = {
-        # 'UNet': UNet(
-        #     in_channels=Config_DSUnet.MODEL.IN_CHANNELS - 2, # -2 since no S1 data
-        #     out_channels=Config_DSUnet.MODEL.OUT_CHANNELS, 
-        #     unet_encoder_size=768
-        # ),
-
-        # 'DSUNet_EarlyFS': DSUNet(
-        #     cfg=Config_DSUnet,
-        #     use_prithvi=False,
-        #     use_cm_attn=True,
-        #     fusion_scheme="early",
-        #     bottleneck_dropout_prob=0
-        # ),
-        # 'DSUNet_MiddleFS': DSUNet(
-        #     cfg=Config_DSUnet,
-        #     use_prithvi=False,
-        #     use_cm_attn=True,
-        #     fusion_scheme="middle",
-        #     bottleneck_dropout_prob=0
-        # ),
-        # 'DSUNet_LateFS': DSUNet(
-        #     cfg=Config_DSUnet,
-        #     use_prithvi=False,
-        #     use_cm_attn=True,
-        #     fusion_scheme="late",
-        #     bottleneck_dropout_prob=None
-        # ),
-        # 'PRC_UNet': DSUNet_PRC(
-        #     cfg=Config_DSUnet
-        # )
-        'DSCNN_UNet': DSGhostUnet(
+        "DSUnetCrissCross": DSGhostUnet(
             cfg=Config_DSUnet,
             use_prithvi=False
         )
-
-        # 'DSUNet3P_EarlyFS': DSUNet3P(
-        #     cfg=Config_DSUnet3P,
-        #     use_prithvi=False,
-        #     use_cm_attn=False,
-        #     fusion_scheme="early",
-        #     bottleneck_dropout_prob=0
-        # ),
-
-        # 'DSUNet3P_MiddleFS': DSUNet3P(
-        #     cfg=Config_DSUnet3P,
-        #     use_prithvi=False,
-        #     use_cm_attn=False,
-        #     fusion_scheme="middle",
-        #     bottleneck_dropout_prob=0
-        # ),
-
-        # 'DSUNet3P_LateFS': DSUNet3P(
-        #     cfg=Config_DSUnet3P,
-        #     use_prithvi=False,
-        #     use_cm_attn=False,
-        #     fusion_scheme="late",
-        #     bottleneck_dropout_prob=0
-        # ),
-
-        # 'DSUnet_Base': DSUNet_Base(
-        #     cfg=Config_DSUnet,
-        #     use_prithvi=False
-        # )
-        # 'DSUNet_Prithvi': DSUNet(
-        #     cfg=Config_DSUnet,
-        #     use_prithvi=True
-        # ),
-
-
-        # 'DSUNet3P': DSUNet3P(
-        #     cfg=Config_DSUnet3P,
-        #     use_prithvi=False
-        # ),
-        # 'DSUNet3P_Prithvi': DSUNet3P(
-        #     cfg=Config_DSUnet3P,
-        #     use_prithvi=True
-        # ),
-
-
-        # 'HydraUNet': HydraUNet(
-        #     cfg=Config_HydraUNet,
-        #     use_prithvi=False
-        # ),
-        # 'HydraUNet_Prithvi': HydraUNet(
-        #     cfg=Config_HydraUNet,
-        #     use_prithvi=True
-        # ),
-
-
-        # 'HydraUNet3P': HydraUNet3P(
-        #     cfg=Config_HydraUnet3P,
-        #     use_hydrafq=True,
-        #     use_prithvi=False
-        # ),
-        # 'HydraUNet3P_Prithvi': HydraUNet3P(
-        #     cfg=Config_HydraUnet3P,
-        #     use_prithvi=True
-        # )
     }
 
      

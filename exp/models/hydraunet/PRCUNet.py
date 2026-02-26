@@ -3,8 +3,7 @@ import torch.nn.functional as F
 import torch
 import torch.nn as nn
 from models.hydraunet.PRCNPTN import PRCNPTNLayer
-from models.hydraunet.Attention import CBAM
-
+ 
 # Dual Stream Classical UNet
 
 # Reference from DS_Unet https://github.com/SebastianHafner/DS_UNet/blob/master/utils/networks.py
@@ -16,8 +15,8 @@ class DSUNet_PRC(nn.Module):
         out = cfg.MODEL.OUT_CHANNELS
         topology = cfg.MODEL.TOPOLOGY
 
-        self.CBAM_S1 = CBAM(topology[0])
-        self.CBAM_S2 = CBAM(topology[0])
+        # self.CBAM_S1 = CBAM(topology[0])
+        # self.CBAM_S2 = CBAM(topology[0])
 
         n_s1_bands = len(cfg.DATASET.SENTINEL1_BANDS)
         n_s2_bands = len(cfg.DATASET.SENTINEL2_BANDS)
@@ -158,7 +157,6 @@ class DoubleConv(nn.Module):
           
         self.proj = nn.Conv2d(in_ch, out_ch, 1, bias=False)
         self.bn_proj = nn.BatchNorm2d(out_ch)
-        
         self.prc = PRCNPTNLayer(
             inch=out_ch,    
             outch=out_ch,

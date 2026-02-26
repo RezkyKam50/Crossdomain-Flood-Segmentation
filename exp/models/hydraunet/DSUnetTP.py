@@ -3,8 +3,7 @@ import torch
 import torch.nn as nn
 from torch.nn.utils.parametrizations import spectral_norm
 from models.prithvi_segmenter import PritviSegmenter
-from models.hydraunet.Attention import CrossModalFusion
-
+ 
 # Dual Stream UNet3+
 # Reference from DS_Unet https://github.com/SebastianHafner/DS_UNet/blob/master/utils/networks.py
 
@@ -54,8 +53,8 @@ class DSUNet3P(nn.Module):
             self.s2_stream = UNet3Plus(cfg, n_channels=n_s2_bands, n_classes=out,
                                        enable_outc=False,
                                        bottleneck_dropout_prob=bottleneck_dropout_prob)
-            if self.use_attention:
-                self.cross_attn = CrossModalFusion(embed_dim=topology[0])
+            # if self.use_attention:
+            #     self.cross_attn = CrossModalFusion(embed_dim=topology[0])
             if use_prithvi:
                 self.prithvi = PritviSegmenter(
                     weights_path=cfg.MODEL.PRITHVI_PATH,
@@ -77,8 +76,8 @@ class DSUNet3P(nn.Module):
             self.s2_stream = UNet3Plus(cfg, n_channels=n_s2_bands, n_classes=out,
                                        enable_outc=False,
                                        bottleneck_dropout_prob=bottleneck_dropout_prob)
-            if self.use_attention:
-                self.cross_attn = CrossModalFusion(embed_dim=topology[-1])
+            # if self.use_attention:
+            #     self.cross_attn = CrossModalFusion(embed_dim=topology[-1])
             if use_prithvi:
                 self.prithvi = PritviSegmenter(
                     weights_path=cfg.MODEL.PRITHVI_PATH,

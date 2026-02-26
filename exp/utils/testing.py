@@ -41,7 +41,7 @@ def computeMetrics(output, target, device, criterion):
       "TN": TN,
       "loss": loss.item()
   }
-  
+
 def computeAccuracy(output, target, device):
   output = torch.argmax(output, dim=1).flatten() 
   target = target.flatten()

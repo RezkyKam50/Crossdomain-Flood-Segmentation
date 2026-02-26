@@ -61,7 +61,7 @@ def processAndAugmentDualWithAux(data):
     img_s2 = img_s2.astype(np.float32)[S2_BANDS, :, :]
     dem = dem.astype(np.float32)[:1, :, :]
     label = label.squeeze().astype(np.int16)
-    water_occur = water_occur.squeeze().astype(np.float32)
+    water_occur = water_occur[:1, :, :].astype(np.float32)  # (1, H, W)
     
     # Convert to tensors
     img_s1 = torch.tensor(img_s1)
@@ -114,8 +114,8 @@ def processTestMM(data):
     img_s2 = img_s2.astype(np.float32)[S2_BANDS, :, :]
     dem = dem.astype(np.float32)[:1, :, :]
     label = label.squeeze().astype(np.int16)
-    water_occur = water_occur.squeeze().astype(np.float32)
-    
+    water_occur = water_occur[:1, :, :].astype(np.float32)  # (1, H, W)
+
     # Convert to tensors
     img_s1 = torch.tensor(img_s1)
     img_s2 = torch.tensor(img_s2)
@@ -173,7 +173,7 @@ def processTestMM(data):
     optical_batch = torch.stack(optical_crops)
     elevation_batch = torch.stack(elevation_crops)
     labels_batch = torch.stack([l.squeeze() for l in labels])
-    water_batch = torch.stack([w.squeeze() for w in water_occurs])
+    water_batch = torch.stack(water_occurs)
     
     return sar_batch, optical_batch, elevation_batch, labels_batch, water_batch
 
@@ -225,9 +225,6 @@ def download_dual_flood_data_with_aux_from_list(l):
         
         arr_dem = np.nan_to_num(getArrFlood(dem_path))
         arr_water = np.nan_to_num(getArrFlood(water_path))
-        
-        if arr_water.max() > 1.0:
-            arr_water = arr_water / 255.0
 
         flood_data.append((arr_s1, arr_s2, arr_y, arr_dem, arr_water))
     

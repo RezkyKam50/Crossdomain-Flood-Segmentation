@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 from torch.nn.utils.parametrizations import spectral_norm
 from models.prithvi_encoder import PrithviEncoder
-from models.hydraunet.Attention import CrossModalFusion
 
 # Dual Stream Classical UNet
 # Reference from DS_Unet https://github.com/SebastianHafner/DS_UNet/blob/master/utils/networks.py
@@ -53,8 +52,8 @@ class DSUNet(nn.Module):
             self.s2_stream = UNet(cfg, n_channels=n_s2_bands, n_classes=out,
                                   topology=topology, enable_outc=False,
                                   bottleneck_dropout_prob=bottleneck_dropout_prob)
-            if self.use_attention:
-                self.cross_attn = CrossModalFusion(embed_dim=topology[0])
+            # if self.use_attention:
+            #     self.cross_attn = CrossModalFusion(embed_dim=topology[0])
             if self.use_prithvi:
                 self.prithvi = PrithviEncoder(
                     weights_path=cfg.MODEL.PRITHVI_PATH,
@@ -71,8 +70,8 @@ class DSUNet(nn.Module):
             self.s2_stream = UNet(cfg, n_channels=n_s2_bands, n_classes=out,
                                   topology=topology, enable_outc=False,
                                   bottleneck_dropout_prob=bottleneck_dropout_prob)
-            if self.use_attention:
-                self.cross_attn = CrossModalFusion(embed_dim=topology[-1])
+            # if self.use_attention:
+            #     self.cross_attn = CrossModalFusion(embed_dim=topology[-1])
             if self.use_prithvi:
                 self.prithvi = PrithviEncoder(
                     weights_path=cfg.MODEL.PRITHVI_PATH,
