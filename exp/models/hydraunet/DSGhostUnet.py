@@ -53,7 +53,7 @@ class DSGhostUnet(nn.Module):
                 weights_path=cfg.MODEL.PRITHVI_PATH,
                 device="cuda" if torch.cuda.is_available() else "cpu"
             ) # prithvi encoder + unet segmentation decoder
-            out_dim = 2 * cfg.MODEL.TOPOLOGY[0] + 2 # N channels x Topo First idx 
+            out_dim = 2 * cfg.MODEL.TOPOLOGY[0]  # N channels x Topo First idx 
         else:
             out_dim = 2 * cfg.MODEL.TOPOLOGY[0] # N channels x Topo First idx 
 
