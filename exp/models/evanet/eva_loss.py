@@ -92,4 +92,18 @@ class ElevationLoss(nn.Module):
 
         loss = (weight * ignore_mask * flood_pos_elev_mask * dry_neg_elev_mask) * score
 
-        return torch.sum(loss)
+        n_valid = ignore_mask.sum().clamp(min=1)
+        return torch.sum(loss) / n_valid
+    
+
+class ElevationLossWrapper:
+    def __init__(self, heights, device):
+        self.loss_fn = ElevationLoss()
+        self.heights = heights
+        self.device = device
+
+    def __call__(self, output, target):
+        # target comes in as (B, H, W) long from computeMetrics
+        # ElevationLoss expects (B, 1, H, W) float
+        target_4d = target.unsqueeze(1).float()
+        return self.loss_fn(output, self.heights.to(self.device), target_4d)

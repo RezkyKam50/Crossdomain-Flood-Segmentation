@@ -20,7 +20,7 @@ from models.hydraunet.config import (
 )
 
 from models.evanet.eva_net_model import EvaNet
-from models.evanet.eva_loss import ElevationLoss
+from models.evanet.eva_loss import ElevationLossWrapper, ElevationLoss
 
 import os
 from tqdm import tqdm
@@ -118,10 +118,12 @@ def train_model(model, loader, optimizer, criterion, epoch, device, accumulation
 
         with autocast(device_type="cuda", dtype=torch.bfloat16):
             outputs = model(sar_imgs, optical_imgs, elevation_imgs, water_occur)   # s1, s2, dem
-            # outputs = model(optical_imgs, elevation_imgs) # for EvaNet
+           
             targets = masks.squeeze(1) if len(masks.shape) > 3 else masks
-            loss = criterion(outputs, targets.long()) / accumulation_steps
- 
+            if isinstance(criterion, ElevationLoss):
+                loss = criterion(outputs, elevation_imgs, targets.unsqueeze(1).float()) / accumulation_steps
+            else:
+                loss = criterion(outputs, targets.long()) / accumulation_steps
             
         loss.backward()
          
@@ -190,10 +192,15 @@ def test(model, loader, criterion, device):
             # predictions = model(optical_imgs, elevation_imgs) # for EvaNet
  
             targets = masks.squeeze(1).long() if len(masks.shape) > 3 else masks.long()
-            loss = criterion(predictions, targets)
- 
-            
-            metrics = computeMetrics(predictions, masks, device, criterion)
+
+            if isinstance(criterion, ElevationLoss):
+                criterion_wrapped = ElevationLossWrapper(elevation_imgs, device)
+            else:
+                criterion_wrapped = criterion
+            loss = criterion_wrapped(predictions, targets)
+            metrics = computeMetrics(predictions, masks, device, criterion_wrapped)
+
+
             metricss = {k: metricss.get(k, 0) + v for k, v in metrics.items()}
 
             TP_batch = metrics['TP'].item()
@@ -391,8 +398,8 @@ def train(model, model_name, train_loader, valid_loader, test_loader, bolivia_lo
         criterion = LovaszLoss(mode='multiclass', per_image=False, from_logits=True, ignore_index=255)
     elif args.loss_func == 'tversky':
         criterion = TverskyLoss(mode='multiclass', alpha=0.3, beta=0.7, gamma=1.33, eps=1e-7, ignore_index=255, from_logits=True)
-    # elif args.loss_func == 'evanet':
-    #     criterion = ElevationLoss()
+    elif args.loss_func == 'evaloss':
+        criterion = ElevationLossWrapper()
 
     scheduler = torch.optim.lr_scheduler.PolynomialLR(optimizer, args.epochs)
      
@@ -484,14 +491,13 @@ def main(args):
     bolivia_loader = get_loader_MM(args.data_path, DatasetType.BOLIVIA.value, args)
  
     models = {
-        "DSUnet": DSGhostUnet(
+        "DSUnetCoord": DSGhostUnet(
             cfg=Config_DSUnet, 
             use_prithvi=False,
-            attn_scheme=None
+            attn_scheme="COORD"
         )
     }
 
-     
     results  = []
     for model_name, model in models.items():
         model.to(device)
