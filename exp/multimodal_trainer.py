@@ -20,7 +20,7 @@ from models.hydraunet.config import (
 )
 
 from models.evanet.eva_net_model import EvaNet
- 
+from models.evanet.eva_loss import ElevationLoss
 
 import os
 from tqdm import tqdm
@@ -295,6 +295,8 @@ def train(model, model_name, train_loader, valid_loader, test_loader, bolivia_lo
         criterion = LovaszLoss(mode='multiclass', per_image=False, from_logits=True, ignore_index=255)
     elif args.loss_func == 'tversky':
         criterion = TverskyLoss(mode='multiclass', alpha=0.3, beta=0.7, gamma=1.33, eps=1e-7, ignore_index=255, from_logits=True)
+    # elif args.loss_func == 'evanet':
+    #     criterion = ElevationLoss()
 
     scheduler = torch.optim.lr_scheduler.PolynomialLR(optimizer, args.epochs)
      
@@ -368,7 +370,7 @@ def main(args):
     logger.info(f'Using device: {device}')
     
     args.version = f"{args.version}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    base_log_dir = f'./logs/Multimodal_{args.epochs}E_{args.loss_func.upper()}_2MODAL'
+    base_log_dir = f'./logs/Multimodal_{args.epochs}E_{args.loss_func.upper()}_{args.torch_seed})'
     os.makedirs(base_log_dir, exist_ok=True)
     
     logger.info("Loading datasets...")
@@ -386,30 +388,10 @@ def main(args):
     bolivia_loader = get_loader_MM(args.data_path, DatasetType.BOLIVIA.value, args)
  
     models = {
-        "DSUnetSqueezeExc": DSGhostUnet(
-            cfg=Config_DSUnet, 
-            use_prithvi=False,
-            attn_scheme="SE"
-        ),
-        "DSUnetCoord": DSGhostUnet(
+        "DSUnet": DSGhostUnet(
             cfg=Config_DSUnet, 
             use_prithvi=False,
             attn_scheme="COORD"
-        ),
-        "DSUnetCBAM": DSGhostUnet(
-            cfg=Config_DSUnet, 
-            use_prithvi=False,
-            attn_scheme="CBAM"
-        ),
-        "DSUnetShuffle": DSGhostUnet(
-            cfg=Config_DSUnet, 
-            use_prithvi=False,
-            attn_scheme="SHUFFLE"
-        ),
-        "DSUnetCrissCross": DSGhostUnet(
-            cfg=Config_DSUnet, 
-            use_prithvi=False,
-            attn_scheme="CRICRO"
         )
     }
 

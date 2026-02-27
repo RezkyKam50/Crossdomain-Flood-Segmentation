@@ -264,6 +264,8 @@ class Up(nn.Module):
         self.up = nn.ConvTranspose2d(in_ch // 2, in_ch // 2, 2, stride=2)
         self.conv = conv_block(in_ch, out_ch)
 
+        self.attn_scheme = attn_scheme
+
         if attn_scheme == "SE":
             self.skip_attn = SEAttention(in_ch // 2)
         elif attn_scheme == "COORD":
@@ -274,6 +276,8 @@ class Up(nn.Module):
             self.skip_attn = ShuffleAttention(in_ch // 2)
         elif attn_scheme == "CRICRO":
             self.skip_attn = CrissCrossAttention(in_ch // 2)
+        elif attn_scheme == None:
+            self.skip_attn = nn.Identity()
 
     def forward(self, x1, x2):
         x1 = self.up(x1)
@@ -287,7 +291,9 @@ class Up(nn.Module):
             diffY // 2, diffY - diffY // 2,
         ])
 
-        x2 = self.skip_attn(x2)  #  attend skip features before concat
+        if self.attn_scheme:
+            x2 = self.skip_attn(x2)  #  attend skip features before concat
+            
         x = torch.cat([x2, x1], dim=1)
         x = self.conv(x)
         return x
