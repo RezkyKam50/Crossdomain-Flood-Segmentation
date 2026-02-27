@@ -391,7 +391,7 @@ def main(args):
         "DSUnet": DSGhostUnet(
             cfg=Config_DSUnet, 
             use_prithvi=False,
-            attn_scheme="COORD"
+            attn_scheme=None
         )
     }
 
