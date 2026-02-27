@@ -370,7 +370,7 @@ def main(args):
     logger.info(f'Using device: {device}')
     
     args.version = f"{args.version}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    base_log_dir = f'./logs/Multimodal_{args.epochs}E_{args.loss_func.upper()}_{args.torch_seed})'
+    base_log_dir = f'./logs/Multimodal_{args.epochs}E_{args.loss_func.upper()}_{args.torch_seed}'
     os.makedirs(base_log_dir, exist_ok=True)
     
     logger.info("Loading datasets...")
