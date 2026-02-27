@@ -97,12 +97,13 @@ def compute_gradnorm(model, running_grad_norm):
 
 def train_model(model, loader, optimizer, criterion, epoch, device, accumulation_steps=2, writer=None):
     model.train()
-    running_loss = 0.0
     running_samples = 0
-    running_accuracies = 0
-    running_iou = 0
-    running_grad_norm = 0.0  
-    
+    running_grad_norm = 0.0
+
+    batch_losses = []
+    batch_accuracies = []
+    batch_ious = []
+
     optimizer.zero_grad()   
     
     for batch_idx, batch_data in enumerate(tqdm(loader, desc=f"Training Epoch {epoch+1}"), 0):
@@ -135,27 +136,42 @@ def train_model(model, loader, optimizer, criterion, epoch, device, accumulation
                 print(f"  Batch {batch_idx+1}/{len(loader)}: Loss={loss.item()*accumulation_steps:.4f}, GradNorm={compute_gradnorm(model, running_grad_norm):.4f}")
          
         running_samples += targets.size(0)
-        running_loss += loss.item() * accumulation_steps  
-        running_accuracies += accuracy
-        running_iou += iou
+        batch_losses.append(loss.item() * accumulation_steps)
+        batch_accuracies.append(accuracy.cpu().item() if torch.is_tensor(accuracy) else accuracy)
+        batch_ious.append(iou.cpu().item() if torch.is_tensor(iou) else iou)
     
     if len(loader) % accumulation_steps != 0:
         optimizer.step()
         optimizer.zero_grad()
-    
-    avg_loss = running_loss / (batch_idx + 1)
-    avg_acc = running_accuracies / (batch_idx + 1)
-    avg_iou = running_iou / (batch_idx + 1)
+
+    batch_losses = np.array(batch_losses)
+    batch_accuracies = np.array(batch_accuracies)
+    batch_ious = np.array(batch_ious)
+
+    avg_loss = np.mean(batch_losses)
+    avg_acc = np.mean(batch_accuracies)
+    avg_iou = np.mean(batch_ious)
+
+    std_loss = np.std(batch_losses)
+    std_acc = np.std(batch_accuracies)
+    std_iou = np.std(batch_ious)
+
     avg_grad_norm = running_grad_norm / (batch_idx + 1)
      
     writer.add_scalar("GradNorm/train", avg_grad_norm, epoch)
     
-    return avg_loss, avg_acc, avg_iou 
+    return avg_loss, avg_acc, avg_iou, std_loss, std_acc, std_iou
 
 def test(model, loader, criterion, device):
     model.eval()
     metricss = {}
     index = 0
+
+    batch_losses = []
+    batch_ious_floods = []
+    batch_ious_non_floods = []
+    batch_accs_floods = []
+    batch_accs_non_floods = []
     
     with torch.no_grad():
         for batch_data in loader:
@@ -179,9 +195,30 @@ def test(model, loader, criterion, device):
             
             metrics = computeMetrics(predictions, masks, device, criterion)
             metricss = {k: metricss.get(k, 0) + v for k, v in metrics.items()}
+
+            TP_batch = metrics['TP'].item()
+            FP_batch = metrics['FP'].item()
+            TN_batch = metrics['TN'].item()
+            FN_batch = metrics['FN'].item()
+
+            iou_floods_batch = TP_batch / (TP_batch + FN_batch + FP_batch) if (TP_batch + FN_batch + FP_batch) > 0 else 0
+            iou_non_floods_batch = TN_batch / (TN_batch + FP_batch + FN_batch) if (TN_batch + FP_batch + FN_batch) > 0 else 0
+            acc_floods_batch = TP_batch / (TP_batch + FN_batch) if (TP_batch + FN_batch) > 0 else 0
+            acc_non_floods_batch = TN_batch / (TN_batch + FP_batch) if (TN_batch + FP_batch) > 0 else 0
+
+            batch_losses.append(metrics['loss'])
+            batch_ious_floods.append(iou_floods_batch)
+            batch_ious_non_floods.append(iou_non_floods_batch)
+            batch_accs_floods.append(acc_floods_batch)
+            batch_accs_non_floods.append(acc_non_floods_batch)
             
             index += 1
     
+    batch_losses = np.array(batch_losses)
+    batch_ious_floods = np.array(batch_ious_floods)
+    batch_ious_non_floods = np.array(batch_ious_non_floods)
+    batch_accs_floods = np.array(batch_accs_floods)
+    batch_accs_non_floods = np.array(batch_accs_non_floods)
     TP, FP, TN, FN, loss = metricss['TP'].item(), metricss['FP'].item(), metricss['TN'].item(), metricss['FN'].item(), metricss['loss']
     
     IOU_floods = TP / (TP + FN + FP) if (TP + FN + FP) > 0 else 0
@@ -192,6 +229,9 @@ def test(model, loader, criterion, device):
     ACC_non_floods = TN / (TN + FP) if (TN + FP) > 0 else 0
     Avg_ACC = (ACC_floods + ACC_non_floods) / 2
 
+    batch_avg_iou = (batch_ious_floods + batch_ious_non_floods) / 2
+    batch_avg_acc = (batch_accs_floods + batch_accs_non_floods) / 2
+
     return {
         'IOU_floods': IOU_floods,
         'IOU_non_floods': IOU_non_floods,
@@ -199,33 +239,71 @@ def test(model, loader, criterion, device):
         'ACC_floods': ACC_floods,
         'ACC_non_floods': ACC_non_floods,
         'Avg_ACC': Avg_ACC,
-        'Loss': loss / index
+        'Loss': loss / index,
+        'std_Loss': np.std(batch_losses),
+        'std_IOU_floods': np.std(batch_ious_floods),
+        'std_IOU_non_floods': np.std(batch_ious_non_floods),
+        'std_Avg_IOU': np.std(batch_avg_iou),
+        'std_ACC_floods': np.std(batch_accs_floods),
+        'std_ACC_non_floods': np.std(batch_accs_non_floods),
+        'std_Avg_ACC': np.std(batch_avg_acc),
     }
 
 def ph_loop(model, train_loader, valid_loader, criterion, device, writer, scheduler, optimizer, args):
     
     num_params_phase_n = get_number_of_trainable_parameters(model)
 
+    phase_metrics = {
+        'train_losses': [], 'train_accs': [], 'train_ious': [],
+        'std_losses': [], 'std_accs': [], 'std_ious': []
+    }
+
     for epoch in range(args.epochs):
         logger.info(f"\nEpoch {epoch+1}/{args.epochs}")
         
-        train_loss, train_acc, train_iou = train_model(
+        train_loss, train_acc, train_iou, std_loss, std_acc, std_iou = train_model(
             model, train_loader, optimizer, criterion, epoch, device, writer=writer
         )
-        logger.info(f"Train - Loss: {train_loss:.4f}, Accuracy: {train_acc:.4f}, IoU: {train_iou:.4f}")
+        logger.info(f"Train - Loss: {train_loss:.4f} (±{std_loss:.4f}), Accuracy: {train_acc:.4f} (±{std_acc:.4f}), IoU: {train_iou:.4f} (±{std_iou:.4f})")
         
         writer.add_scalar("Loss/train", train_loss, epoch)
         writer.add_scalar("Accuracy/train", train_acc, epoch)
         writer.add_scalar("IoU/train", train_iou, epoch)
+
+        writer.add_scalar("Loss_std/train", std_loss, epoch)
+        writer.add_scalar("Accuracy_std/train", std_acc, epoch)
+        writer.add_scalar("IoU_std/train", std_iou, epoch)
+
+        phase_metrics['train_losses'].append(train_loss)
+        phase_metrics['train_accs'].append(train_acc)
+        phase_metrics['train_ious'].append(train_iou)
+        phase_metrics['std_losses'].append(std_loss)
+        phase_metrics['std_accs'].append(std_acc)
+        phase_metrics['std_ious'].append(std_iou)
         
         scheduler.step()
         
         if (epoch + 1) % args.test_interval == 0:
             val_metrics = test(model, valid_loader, criterion, device)
-            logger.info(f"Valid - Avg IOU: {val_metrics['Avg_IOU']:.4f}, Avg ACC: {val_metrics['Avg_ACC']:.4f}, Loss: {val_metrics['Loss']:.4f}")
+            logger.info(f"Valid - Avg IOU: {val_metrics['Avg_IOU']:.4f} (±{val_metrics['std_Avg_IOU']:.4f}), "
+                        f"Avg ACC: {val_metrics['Avg_ACC']:.4f} (±{val_metrics['std_Avg_ACC']:.4f}), "
+                        f"Loss: {val_metrics['Loss']:.4f} (±{val_metrics['std_Loss']:.4f})")
             
             for metric_name, metric_value in val_metrics.items():
                 writer.add_scalar(f"{metric_name}/valid", metric_value, epoch)
+
+    phase_summary = {
+        'mean_train_loss': float(np.mean(phase_metrics['train_losses'])),
+        'mean_train_acc': float(np.mean(phase_metrics['train_accs'])),
+        'mean_train_iou': float(np.mean(phase_metrics['train_ious'])),
+        'mean_std_loss': float(np.mean(phase_metrics['std_losses'])),
+        'mean_std_acc': float(np.mean(phase_metrics['std_accs'])),
+        'mean_std_iou': float(np.mean(phase_metrics['std_ious']))
+    }
+    logger.info(f"Phase Summary - Mean Loss: {phase_summary['mean_train_loss']:.4f} (±{phase_summary['mean_std_loss']:.4f}), "
+                f"Mean Acc: {phase_summary['mean_train_acc']:.4f} (±{phase_summary['mean_std_acc']:.4f}), "
+                f"Mean IoU: {phase_summary['mean_train_iou']:.4f} (±{phase_summary['mean_std_iou']:.4f})")
+
     return num_params_phase_n
 
 def ft_loop(model, model_name, train_loader, valid_loader, criterion, device, writer, scheduler, optimizer, args):
@@ -238,22 +316,40 @@ def ft_loop(model, model_name, train_loader, valid_loader, criterion, device, wr
         finetune_lr = args.learning_rate * 0.1
         optimizer = torch.optim.AdamW(model.parameters(), lr=finetune_lr)
         scheduler = torch.optim.lr_scheduler.PolynomialLR(optimizer, finetune_epochs)
+
+        ft_metrics = {
+            'train_losses': [], 'train_accs': [], 'train_ious': [],
+            'std_losses': [], 'std_accs': [], 'std_ious': []
+        }
         
         for epoch in range(args.epochs, args.epochs + finetune_epochs):
             logger.info(f"\n{model_name} - Fine-tune Epoch {epoch+1}/{args.epochs + finetune_epochs}")
              
-            train_loss, train_acc, train_iou = train_model(model, train_loader, optimizer, criterion, epoch, device, writer=writer)
-            logger.info(f"Train - Loss: {train_loss:.4f}, Accuracy: {train_acc:.4f}, IoU: {train_iou:.4f}")
+            train_loss, train_acc, train_iou, std_loss, std_acc, std_iou = train_model(model, train_loader, optimizer, criterion, epoch, device, writer=writer)
+            logger.info(f"Train - Loss: {train_loss:.4f} (±{std_loss:.4f}), Accuracy: {train_acc:.4f} (±{std_acc:.4f}), IoU: {train_iou:.4f} (±{std_iou:.4f})")
             
             writer.add_scalar("Loss/train", train_loss, epoch)
             writer.add_scalar("Accuracy/train", train_acc, epoch)
             writer.add_scalar("IoU/train", train_iou, epoch)
+
+            writer.add_scalar("Loss_std/train", std_loss, epoch)
+            writer.add_scalar("Accuracy_std/train", std_acc, epoch)
+            writer.add_scalar("IoU_std/train", std_iou, epoch)
+
+            ft_metrics['train_losses'].append(train_loss)
+            ft_metrics['train_accs'].append(train_acc)
+            ft_metrics['train_ious'].append(train_iou)
+            ft_metrics['std_losses'].append(std_loss)
+            ft_metrics['std_accs'].append(std_acc)
+            ft_metrics['std_ious'].append(std_iou)
             
             scheduler.step()
             
             if (epoch + 1) % args.test_interval == 0:
                 val_metrics = test(model, valid_loader, criterion, device)
-                logger.info(f"Valid - Avg IOU: {val_metrics['Avg_IOU']:.4f}, Avg ACC: {val_metrics['Avg_ACC']:.4f}")
+                logger.info(f"Valid - Avg IOU: {val_metrics['Avg_IOU']:.4f} (±{val_metrics['std_Avg_IOU']:.4f}), "
+                            f"Avg ACC: {val_metrics['Avg_ACC']:.4f} (±{val_metrics['std_Avg_ACC']:.4f}), "
+                            f"Loss: {val_metrics['Loss']:.4f} (±{val_metrics['std_Loss']:.4f})")
                 
                 for metric_name, metric_value in val_metrics.items():
                     writer.add_scalar(f"{metric_name}/valid", metric_value, epoch)
@@ -346,8 +442,8 @@ def train(model, model_name, train_loader, valid_loader, test_loader, bolivia_lo
     test_metrics = test(model, test_loader, criterion, device)
     bolivia_metrics = test(model, bolivia_loader, criterion, device)
     
-    logger.info(f"Test Set - Avg IOU: {test_metrics['Avg_IOU']:.4f}, Avg ACC: {test_metrics['Avg_ACC']:.4f}, Loss: {test_metrics['Loss']:.4f}")
-    logger.info(f"Bolivia Set - Avg IOU: {bolivia_metrics['Avg_IOU']:.4f}, Avg ACC: {bolivia_metrics['Avg_ACC']:.4f}, Loss: {bolivia_metrics['Loss']:.4f}")
+    logger.info(f"Test Set - Avg IOU: {test_metrics['Avg_IOU']:.4f} (±{test_metrics['std_Avg_IOU']:.4f}), Avg ACC: {test_metrics['Avg_ACC']:.4f} (±{test_metrics['std_Avg_ACC']:.4f}), Loss: {test_metrics['Loss']:.4f} (±{test_metrics['std_Loss']:.4f})")
+    logger.info(f"Bolivia Set - Avg IOU: {bolivia_metrics['Avg_IOU']:.4f} (±{bolivia_metrics['std_Avg_IOU']:.4f}), Avg ACC: {bolivia_metrics['Avg_ACC']:.4f} (±{bolivia_metrics['std_Avg_ACC']:.4f}), Loss: {bolivia_metrics['Loss']:.4f} (±{bolivia_metrics['std_Loss']:.4f})")
     
     writer.close()
     
