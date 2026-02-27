@@ -277,6 +277,7 @@ class Up(nn.Module):
         elif attn_scheme == "CRICRO":
             self.skip_attn = CrissCrossAttention(in_ch // 2)
         elif attn_scheme == None:
+            print("No attention sceheme is applied.")
             self.skip_attn = nn.Identity()
 
     def forward(self, x1, x2):
