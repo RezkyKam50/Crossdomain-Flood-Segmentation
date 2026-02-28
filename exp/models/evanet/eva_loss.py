@@ -11,89 +11,60 @@ class ElevationLoss(nn.Module):
     def forward(self, pred_labels, heights, gt_labels):
         """
         INPUT:
-            pred_labels: Predicted labels. Shape: (Batch, Channel, Height, Width)
-            heights:     GT elevation map.  Shape: (Batch, Channel, Height, Width)
-            gt_labels:   GT labels.         Shape: (Batch, Channel, Height, Width)
-                         255 = Ignore, 0 = Non-flood (Dry), 1 = Flood
-        OUTPUT:
-            final_loss: A single value.
+            pred_labels: Predicted logits.  Shape: (B, 2, H, W)
+            heights:     GT elevation map.  Shape: (B, 1, H, W)
+            gt_labels:   GT labels.         Shape: (B, 1, H, W)
+                         0=dry, 1=flood, 255=ignore
         """
 
-        ## Get Argmax Index for each prediction channel 
-        pred_labels = torch.softmax(pred_labels, dim=1)
-        pred_label_idx = torch.argmax(pred_labels, dim=1)
-        
-        ## Split the prediction channels (channel 0 = flood, channel 1 = dry)
-        flood_pred, dry_pred = torch.tensor_split(pred_labels, 2, dim=1)
-        
-        ## Generate Pred Masks
-        ones = torch.ones_like(gt_labels)
-        flood_mask = torch.where(pred_label_idx == 0, ones, 0)
-        dry_mask   = torch.where(pred_label_idx == 1, ones, 0)
-        
-        ## Mask Each Prediction Channel and Combine
-        flood_pred  = flood_pred * flood_mask
-        dry_pred    = -dry_pred  * dry_mask
-        unified_pred = flood_pred + dry_pred
+        # --- Softmax + get flood probability (channel 1) ---
+        pred_prob  = torch.softmax(pred_labels, dim=1)   # (B, 2, H, W)
+        flood_prob = pred_prob[:, 1:2]                   # (B, 1, H, W) flood confidence
+        dry_prob   = pred_prob[:, 0:1]                   # (B, 1, H, W) dry confidence
 
-        ## Flatten prediction: (B, C, H*W, 1)
-        pred_flat = torch.reshape(unified_pred, (unified_pred.shape[0], unified_pred.shape[1], -1, 1))
+        # Signed prediction: +flood_prob for predicted flood, -dry_prob for predicted dry
+        pred_label_idx = torch.argmax(pred_prob, dim=1, keepdim=True)  # (B, 1, H, W)
+        flood_mask = (pred_label_idx == 1).float()
+        dry_mask   = (pred_label_idx == 0).float()
+        unified_pred = flood_prob * flood_mask - dry_prob * dry_mask   # (B, 1, H, W)
 
-        ## Unfold GT labels: (B, 1, H*W, 9)
-        gt_unfolded = self.unfold(gt_labels.float())
-        gt_unfolded = gt_unfolded.permute(0, 2, 1)
-        gt_unfolded = torch.unsqueeze(gt_unfolded, dim=1)
+        # --- Flatten pred: (B, 1, H*W, 1) ---
+        pred_flat = unified_pred.reshape(unified_pred.shape[0], 1, -1, 1)
 
-        ## Flatten heights: (B, 1, H*W, 1)
-        h_flat = heights.clone()
-        h_flat = torch.reshape(h_flat, (h_flat.shape[0], 1, -1, 1))
+        # --- Unfold GT labels: (B, 1, H*W, 9) ---
+        gt_unfolded = self.unfold(gt_labels.float())           # (B, 9, H*W)
+        gt_unfolded = gt_unfolded.permute(0, 2, 1).unsqueeze(1)  # (B, 1, H*W, 9)
 
-        ## Unfold heights: (B, 1, H*W, 9)
-        h_unfolded = self.unfold(heights)
-        h_unfolded = h_unfolded.permute(0, 2, 1)
-        h_unfolded = torch.unsqueeze(h_unfolded, dim=1)
+        # --- Unfold heights: (B, 1, H*W, 9) ---
+        h_flat     = heights.reshape(heights.shape[0], 1, -1, 1)
+        h_unfolded = self.unfold(heights).permute(0, 2, 1).unsqueeze(1)
 
-        # ----------------------------------------------------------------
-        # Remap GT labels for score calculation:
-        #   255 (ignore) -> 0  (neutral, will be masked out anyway)
-        #   0   (dry)    -> -1 (matches original convention)
-        #   1   (flood)  -> +1 (unchanged)
-        # ----------------------------------------------------------------
-        gt_remapped = gt_unfolded.clone().float()
-        gt_remapped = torch.where(gt_unfolded == 255, torch.zeros_like(gt_remapped), gt_remapped)  # ignore -> 0
-        gt_remapped = torch.where(gt_unfolded == 0,  -torch.ones_like(gt_remapped),  gt_remapped)  # dry    -> -1
-        # flood (1) stays as 1
+        # --- GT class masks (no remapping, direct comparison) ---
+        gt_flood_mask = (gt_unfolded == 1).float()   # neighbor is flood
+        gt_dry_mask   = (gt_unfolded == 0).float()   # neighbor is dry
+        ignore_mask   = (gt_unfolded != 255).float() # exclude ignore pixels
 
-        ## Calculate Score
-        score = 1 - (gt_remapped * pred_flat)
+        # --- Elevation consistency masks ---
+        delta = h_flat - h_unfolded                          # positive = center higher than neighbor
+        pos_elev_mask = (delta > 0).float()
+        neg_elev_mask = (delta < 0).float()
 
-        ## Calculate Elevation Delta
-        delta_unfolded = h_flat - h_unfolded
-
-        ## Build masks using NEW label convention on the original gt_unfolded
-        ones  = torch.ones_like(gt_unfolded)
-        zeros = torch.zeros_like(gt_unfolded)
-
-        # Ignore mask: exclude pixels labelled 255
-        ignore_mask   = torch.where(gt_unfolded == 255, zeros, ones)
-
-        # Elevation direction masks
-        pos_elev_mask = torch.where(delta_unfolded > 0, ones, zeros)
-        neg_elev_mask = torch.where(delta_unfolded < 0, ones, zeros)
-
-        # GT class masks (new convention)
-        gt_flood_mask = torch.where(gt_unfolded == 1, ones, zeros)
-        gt_dry_mask   = torch.where(gt_unfolded == 0, ones, zeros)
-
-        # Elevation consistency masks (same logic as before)
+        # Penalize: flood pixel that is HIGHER than its neighbor (water flows down)
+        # Penalize: dry pixel that is LOWER than its neighbor
         flood_pos_elev_mask = 1 - (gt_flood_mask * pos_elev_mask)
         dry_neg_elev_mask   = 1 - (gt_dry_mask   * neg_elev_mask)
 
-        weight = torch.ones_like(gt_unfolded)
+        # --- Score: 1 - (gt_signed * pred_signed) ---
+        # Convert GT to signed: flood=+1, dry=-1, ignore=0
+        gt_signed = gt_flood_mask - gt_dry_mask              # +1, -1, or 0 (ignore)
+        score = 1 - (gt_signed * pred_flat)                  # (B, 1, H*W, 9)
 
-        loss = self.relu(weight * ignore_mask * flood_pos_elev_mask * dry_neg_elev_mask * score)
-        n_valid = (ignore_mask * flood_pos_elev_mask * dry_neg_elev_mask).sum().clamp(min=1)
-        return torch.sum(loss) / n_valid
+        # --- Combined mask and loss ---
+        combined_mask = ignore_mask * flood_pos_elev_mask * dry_neg_elev_mask
+        loss = self.relu(combined_mask * score)
+
+        n_valid = combined_mask.sum().clamp(min=1)
+        return loss.sum() / n_valid
     
 
 class ElevationLossWrapper:
