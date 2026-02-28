@@ -22,7 +22,7 @@ class DSGhostUnet(nn.Module):
         # sentinel-1 unet stream
         n_s1_bands = len(cfg.DATASET.SENTINEL1_BANDS)
         s1_in = n_s1_bands 
-        self.s1_stream = UNet(cfg, n_channels=s1_in + 2, n_classes=out, topology=topology, enable_outc=False, attn_scheme=attn_scheme)
+        self.s1_stream = UNet(cfg, n_channels=s1_in, n_classes=out, topology=topology, enable_outc=False, attn_scheme=attn_scheme)
         self.n_s1_bands = n_s1_bands
 
         # sentinel-2 unet stream
