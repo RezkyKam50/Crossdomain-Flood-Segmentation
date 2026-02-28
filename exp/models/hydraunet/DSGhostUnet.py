@@ -89,7 +89,7 @@ class DSGhostUnet(nn.Module):
         s2_feature = self.s2_stream(s2_img)     
 
         # aux attention on S1 features
-        aux = torch.cat([dem_img, water_occur.unsqueeze(1)], dim=1)  # [B, 2, H, W]
+        aux = torch.cat([dem_img, water_occur], dim=1)  # [B, 2, H, W]
         s1_feature = self.aux_se(s1_feature, aux)                    # attended S1
         s2_feature = self.s2_se(s2_feature, s1_feature)  
         
