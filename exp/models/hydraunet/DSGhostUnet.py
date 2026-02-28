@@ -30,17 +30,16 @@ class DSGhostUnet(nn.Module):
         s2_in = n_s2_bands  
         self.s2_stream = UNet(cfg, n_channels=s2_in, n_classes=out, topology=topology, enable_outc=False, attn_scheme=attn_scheme)
         self.n_s2_bands = n_s2_bands
+ 
+        self.aux_se = CrossModalSqueezeExcite(
+            aux_chs=2,
+            s_chs=cfg.MODEL.TOPOLOGY[0]
+        )
 
-        # attention block
-        # self.aux_se = CrossModalSqueezeExcite(
-        #     aux_chs=2,
-        #     s_chs=cfg.MODEL.TOPOLOGY[0]
-        # )
-
-        # self.s2_se = CrossModalSqueezeExcite(
-        #     aux_chs=cfg.MODEL.TOPOLOGY[0],  # s1 attended as aux
-        #     s_chs=cfg.MODEL.TOPOLOGY[0]
-        # ) 
+        self.s2_se = CrossModalSqueezeExcite(
+            aux_chs=cfg.MODEL.TOPOLOGY[0],  # s1 attended as aux
+            s_chs=cfg.MODEL.TOPOLOGY[0]
+        ) 
 
 
         # out block combining unet outputs
@@ -85,14 +84,14 @@ class DSGhostUnet(nn.Module):
         
         # print(f"JRC SH: {water_occur.shape}")
         # print(f"DEM SH: {dem_img.shape}")
-        s1_feature = torch.cat([dem_img, water_occur, s1_img], dim=1) # B, 2 + 2, H, W
-        s1_feature = self.s1_stream(s1_feature)
+        # s1_feature = torch.cat([dem_img, water_occur, s1_img], dim=1) # B, 2 + 2, H, W
+        s1_feature = self.s1_stream(s1_img)
         s2_feature = self.s2_stream(s2_img)     
 
         # aux attention on S1 features
-        # aux = torch.cat([dem_img, water_occur.unsqueeze(1)], dim=1)  # [B, 2, H, W]
-        # s1_feature = self.aux_se(s1_feature, aux)                    # attended S1
-        # s2_feature = self.s2_se(s2_feature, s1_feature)  
+        aux = torch.cat([dem_img, water_occur.unsqueeze(1)], dim=1)  # [B, 2, H, W]
+        s1_feature = self.aux_se(s1_feature, aux)                    # attended S1
+        s2_feature = self.s2_se(s2_feature, s1_feature)  
         
         if self.use_prithvi:
             prithvi_features = self.prithvi(s2_img)
