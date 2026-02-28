@@ -399,7 +399,7 @@ def train(model, model_name, train_loader, valid_loader, test_loader, bolivia_lo
     elif args.loss_func == 'tversky':
         criterion = TverskyLoss(mode='multiclass', alpha=0.3, beta=0.7, gamma=1.33, eps=1e-7, ignore_index=255, from_logits=True)
     elif args.loss_func == 'evaloss':
-        criterion = ElevationLossWrapper()
+        criterion = ElevationLoss()
 
     scheduler = torch.optim.lr_scheduler.PolynomialLR(optimizer, args.epochs)
      
