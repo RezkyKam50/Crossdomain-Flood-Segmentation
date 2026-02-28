@@ -20,6 +20,7 @@ class ElevationLoss(nn.Module):
         """
 
         ## Get Argmax Index for each prediction channel 
+        pred_labels = torch.softmax(pred_labels, dim=1)
         pred_label_idx = torch.argmax(pred_labels, dim=1)
         
         ## Split the prediction channels (channel 0 = flood, channel 1 = dry)
@@ -90,9 +91,8 @@ class ElevationLoss(nn.Module):
 
         weight = torch.ones_like(gt_unfolded)
 
-        loss = (weight * ignore_mask * flood_pos_elev_mask * dry_neg_elev_mask) * score
-
-        n_valid = ignore_mask.sum().clamp(min=1)
+        loss = self.relu(weight * ignore_mask * flood_pos_elev_mask * dry_neg_elev_mask * score)
+        n_valid = (ignore_mask * flood_pos_elev_mask * dry_neg_elev_mask).sum().clamp(min=1)
         return torch.sum(loss) / n_valid
     
 
