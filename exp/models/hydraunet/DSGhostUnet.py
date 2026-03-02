@@ -42,7 +42,7 @@ class DSGhostUnet(nn.Module):
         ) 
 
         self.feature_attn = SEAttention(
-            channel=cfg.MODEL.TOPOLOGY[-1]
+            channel=cfg.MODEL.TOPOLOGY[0]
         )
 
 
