@@ -22,7 +22,7 @@ class DSGhostUnet(nn.Module):
         # sentinel-1 unet stream
         n_s1_bands = len(cfg.DATASET.SENTINEL1_BANDS)
         s1_in = n_s1_bands 
-        self.s1_stream = UNet(cfg, n_channels=s1_in, n_classes=out, topology=topology, enable_outc=False, attn_scheme=attn_scheme)
+        self.s1_stream = UNet(cfg, n_channels=s1_in + 2, n_classes=out, topology=topology, enable_outc=False, attn_scheme=attn_scheme)
         self.n_s1_bands = n_s1_bands
 
         # sentinel-2 unet stream
@@ -40,6 +40,10 @@ class DSGhostUnet(nn.Module):
             aux_chs=cfg.MODEL.TOPOLOGY[0],  # s1 attended as aux
             s_chs=cfg.MODEL.TOPOLOGY[0]
         ) 
+
+        self.feature_attn = SEAttention(
+            channel=cfg.MODEL.TOPOLOGY[-1]
+        )
 
 
         # out block combining unet outputs
@@ -84,14 +88,16 @@ class DSGhostUnet(nn.Module):
         
         # print(f"JRC SH: {water_occur.shape}")
         # print(f"DEM SH: {dem_img.shape}")
-        # s1_feature = torch.cat([dem_img, water_occur, s1_img], dim=1) # B, 2 + 2, H, W
-        s1_feature = self.s1_stream(s1_img)
+        s1_feature = torch.cat([dem_img, water_occur, s1_img], dim=1) # B, 2 + 2, H, W
+        s1_feature = self.s1_stream(s1_feature)
+        s1_feature = self.feature_attn(s1_feature)
         s2_feature = self.s2_stream(s2_img)     
+        s2_feature = self.feature_attn(s2_feature)
 
         # aux attention on S1 features
-        aux = torch.cat([dem_img, water_occur], dim=1)  # [B, 2, H, W]
-        s1_feature = self.aux_se(s1_feature, aux)                    # attended S1
-        s2_feature = self.s2_se(s2_feature, s1_feature)  
+        # aux = torch.cat([dem_img, water_occur], dim=1)  # [B, 2, H, W]
+        # s1_feature = self.aux_se(s1_feature, aux)                    # attended S1
+        # s2_feature = self.s2_se(s2_feature, s1_feature)  
         
         if self.use_prithvi:
             prithvi_features = self.prithvi(s2_img)
