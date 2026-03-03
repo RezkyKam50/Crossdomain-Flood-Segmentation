@@ -14,7 +14,7 @@ class Config_DSUnet:
         IN_CHANNELS = 8  # 2 S1 bands + 6 S2 bands  
         # IN_CHANNELS = 15
         OUT_CHANNELS = 2  # Binary classification (flood/no-flood)
-        TOPOLOGY = [32, 64, 128, 256, 512]
+        TOPOLOGY = [16, 32, 64, 128, 256, 512, 1024]
         PRITHVI_PATH = "./prithvi/Prithvi_EO_V1_100M.pt"
 
 
