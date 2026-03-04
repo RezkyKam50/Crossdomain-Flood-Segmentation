@@ -491,23 +491,17 @@ def main(args):
     bolivia_loader = get_loader_MM(args.data_path, DatasetType.BOLIVIA.value, args)
  
     models = {
-        "DSUnet_SE": DSGhostUnet(
+        "DSUnetCoord_CSE": DSGhostUnet(
             cfg=Config_DSUnet, 
             use_prithvi=False,
-            skip_attn_scheme=None,
+            skip_attn_scheme="COORD",
             end_attn_scheme="SE"
         ),
-        "DSUnet_SE": DSGhostUnet(
+        "DSUnetShuffle_CSE": DSGhostUnet(
             cfg=Config_DSUnet, 
             use_prithvi=False,
-            skip_attn_scheme=None,
-            end_attn_scheme="COORD"
-        ),
-        "DSUnet_SHUFFLE": DSGhostUnet(
-            cfg=Config_DSUnet, 
-            use_prithvi=False,
-            skip_attn_scheme=None,
-            end_attn_scheme="SHUFFLE"
+            skip_attn_scheme="SHUFFLE",
+            end_attn_scheme="SE",
         )
     }
 
