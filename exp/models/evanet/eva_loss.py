@@ -1,13 +1,18 @@
 import torch
 from torch import nn
+from utils.tversky import TverskyLoss
+
 
 class ElevationLoss(nn.Module):
     
-    def __init__(self):
+    def __init__(self, use_tversky=True):
         super(ElevationLoss, self).__init__()
         self.unfold = torch.nn.Unfold(kernel_size=(3, 3), padding=1)
         self.relu = torch.nn.ReLU()
+        self.use_tversky = use_tversky
+        self.tversky = TverskyLoss(mode='multiclass', alpha=0.3, beta=0.7, gamma=1.33, eps=1e-7, ignore_index=255, from_logits=True)
         
+
     def forward(self, pred_labels, heights, gt_labels):
         """
         INPUT:
@@ -16,6 +21,10 @@ class ElevationLoss(nn.Module):
             gt_labels:   GT labels.         Shape: (B, 1, H, W)
                          0=dry, 1=flood, 255=ignore
         """
+        if self.use_tversky:
+            # ── Tversky loss ─────────────────────────────────────────────────────
+            gt_long = gt_labels.squeeze(1).long()   # (B, H, W) long — required by Tversky
+            loss_tversky = self.tversky(pred_labels, gt_long)
 
         # --- Softmax + get flood probability (channel 1) ---
         pred_prob  = torch.softmax(pred_labels, dim=1)   # (B, 2, H, W)
@@ -64,8 +73,14 @@ class ElevationLoss(nn.Module):
         loss = self.relu(combined_mask * score)
 
         n_valid = combined_mask.sum().clamp(min=1)
-        return loss.sum() / n_valid
-    
+        loss_elevation = loss.sum() / n_valid
+        
+        if self.use_tversky:
+            total_loss = loss_tversky + loss_elevation
+            return total_loss
+        else:
+            return loss_elevation
+        
 
 class ElevationLossWrapper:
     def __init__(self, heights, device):

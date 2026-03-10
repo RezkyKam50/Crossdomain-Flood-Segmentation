@@ -473,7 +473,7 @@ def main(args):
     logger.info(f'Using device: {device}')
     
     args.version = f"{args.version}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    base_log_dir = f'./logs/Multimodal_{args.epochs}E_{args.loss_func.upper()}_{args.torch_seed}'
+    base_log_dir = f'./logs/Multimodal_{args.epochs}E_{args.loss_func.upper()}xElevationLoss_{args.torch_seed}'
     os.makedirs(base_log_dir, exist_ok=True)
     
     logger.info("Loading datasets...")
@@ -497,7 +497,7 @@ def main(args):
         #     skip_attn_scheme="COORD",
         #     end_attn_scheme="SE"
         # ),
-        "DSUnetShuffleG4_SE": DSGhostUnet(
+        "DSUnetShuffle_SE": DSGhostUnet(
             cfg=Config_DSUnet, 
             use_prithvi=False,
             skip_attn_scheme="SHUFFLE",
@@ -515,7 +515,7 @@ def main(args):
         #     skip_attn_scheme="COORD",
         #     end_attn_scheme="COORD",
         # ),
-        "DSUnetShuffleG4_SHUFFLE": DSGhostUnet(
+        "DSUnetShuffle_SHUFFLE": DSGhostUnet(
             cfg=Config_DSUnet, 
             use_prithvi=False,
             skip_attn_scheme="SHUFFLE",
