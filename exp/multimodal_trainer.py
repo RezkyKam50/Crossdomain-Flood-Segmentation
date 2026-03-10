@@ -497,7 +497,7 @@ def main(args):
         #     skip_attn_scheme="COORD",
         #     end_attn_scheme="SE"
         # ),
-        "DSUnetShuffleG12_SE": DSGhostUnet(
+        "DSUnetShuffleG4_SE": DSGhostUnet(
             cfg=Config_DSUnet, 
             use_prithvi=False,
             skip_attn_scheme="SHUFFLE",
@@ -515,7 +515,7 @@ def main(args):
         #     skip_attn_scheme="COORD",
         #     end_attn_scheme="COORD",
         # ),
-        "DSUnetShuffleG12_SHUFFLE": DSGhostUnet(
+        "DSUnetShuffleG4_SHUFFLE": DSGhostUnet(
             cfg=Config_DSUnet, 
             use_prithvi=False,
             skip_attn_scheme="SHUFFLE",
