@@ -473,7 +473,7 @@ def main(args):
     logger.info(f'Using device: {device}')
     
     args.version = f"{args.version}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    base_log_dir = f'./logs/Multimodal_{args.epochs}E_{args.loss_func.upper()}xTversky_{args.torch_seed}'
+    base_log_dir = f'./logs/Multimodal_{args.epochs}E_{args.loss_func.upper()}_{args.torch_seed}'
     os.makedirs(base_log_dir, exist_ok=True)
     
     logger.info("Loading datasets...")
@@ -535,7 +535,7 @@ def main(args):
         results.append(result)
     
 
-    results_file = os.path.join(base_log_dir, f'multimodal_e{args.epochs}_{args.loss_func}xTversky.json')
+    results_file = os.path.join(base_log_dir, f'multimodal_e{args.epochs}_{args.loss_func}.json')
     with open(results_file, 'w') as f:
         json.dump(results, f, indent=4, default=float)
     logger.info(f"\nResults saved to: {results_file}")
