@@ -105,9 +105,8 @@ class DSUNet(nn.Module):
                 param.requires_grad = trainable
  
 
-    def forward(self, s1_img, s2_img, dem_img, water_occur):
-        del dem_img
-        del water_occur
+    def forward(self, s1_img, s2_img, dem_img=None, water_occur=None):
+ 
 
         if self.fusion_scheme == "early":
             fused_input = torch.cat([s1_img, s2_img], dim=1)

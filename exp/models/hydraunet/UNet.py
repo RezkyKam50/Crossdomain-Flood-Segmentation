@@ -57,7 +57,7 @@ class UNet(nn.Module):
  
         return x
 
-    def forward(self, s1_img, s2_img, dem_img): # pass other modality for train loop compatiblity
+    def forward(self, s1_img, s2_img, dem_img, water_occur=None): # pass other modality for train loop compatiblity
 
         del s1_img
         del dem_img
