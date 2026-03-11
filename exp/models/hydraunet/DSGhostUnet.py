@@ -73,6 +73,8 @@ class DSGhostUnet(nn.Module):
             self.feature_attn = ShuffleAttention(
                 channel=self.attn_channel
             )
+        elif end_attn_scheme == None:
+            self.feature_attn = nn.Identity()
 
     def change_prithvi_trainability(self, trainable):
         if self.use_prithvi:

@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 
 from models.hydraunet.UNet import UNet
+from models.hydraunet.UNetTP import UNet3Plus
 from models.hydraunet.DSUnet_Base import DSUNet_Base
 from models.hydraunet.DSUnet import DSUNet          # Dual Modality Classical UNet
 from models.hydraunet.DSUnetTP import DSUNet3P      # Dual Modality UNet3+
@@ -390,7 +391,7 @@ def train(model, model_name, train_loader, valid_loader, test_loader, bolivia_lo
         criterion = DiceLoss(device=device)
     elif args.loss_func == 'dl2':
         criterion = DiceLoss2(device=device, epsilon=1e-7)
-    elif args.loss_func == 'bce':
+    elif args.loss_func == 'wce':
         criterion = nn.CrossEntropyLoss(weight=torch.tensor([0.7, 0.3], device=device), ignore_index=255)
     elif args.loss_func == 'focal':
         criterion = FocalLoss(mode="multiclass", alpha=0.25, gamma=2, ignore_index=255, reduction='mean')
@@ -491,36 +492,36 @@ def main(args):
     bolivia_loader = get_loader_MM(args.data_path, DatasetType.BOLIVIA.value, args)
  
     models = {
-        # "DSUnetCoord_CSE": DSGhostUnet(
-        #     cfg=Config_DSUnet, 
-        #     use_prithvi=False,
-        #     skip_attn_scheme="COORD",
-        #     end_attn_scheme="SE"
-        # ),
+        "UNet": UNet(
+            in_channels=6,
+            out_channels=2,
+            unet_encoder_size=768
+        ),
+        "DSUnet": DSUNet(
+            cfg=Config_DSUnet,
+            use_prithvi=False,
+            use_cm_attn=False,
+            fusion_scheme="late",
+            bottleneck_dropout_prob=None
+        ),
+        "DSUnet_SE": DSGhostUnet(
+            cfg=Config_DSUnet,
+            use_prithvi=False,
+            skip_attn_scheme="SHUFFLE",
+            end_attn_scheme="SE"
+        ),
+        "DSUnet_Shuffle": DSGhostUnet(
+            cfg=Config_DSUnet, 
+            use_prithvi=False,
+            skip_attn_scheme="SHUFFLE",
+            end_attn_scheme=None,
+        ),
         "DSUnet_Shuffle_SE": DSGhostUnet(
             cfg=Config_DSUnet, 
             use_prithvi=False,
             skip_attn_scheme="SHUFFLE",
             end_attn_scheme="SE",
-        ),
-        # "DSUnetShuffle_COORD": DSGhostUnet(
-        #     cfg=Config_DSUnet, 
-        #     use_prithvi=False,
-        #     skip_attn_scheme="SHUFFLE",
-        #     end_attn_scheme="COORD",
-        # ),
-        # "DSUnetCoord_COORD": DSGhostUnet(
-        #     cfg=Config_DSUnet, 
-        #     use_prithvi=False,
-        #     skip_attn_scheme="COORD",
-        #     end_attn_scheme="COORD",
-        # ),
-        # "DSUnetShuffle_SHUFFLE": DSGhostUnet(
-        #     cfg=Config_DSUnet, 
-        #     use_prithvi=False,
-        #     skip_attn_scheme="SHUFFLE",
-        #     end_attn_scheme="SHUFFLE",
-        # ),
+        )
     }
 
     results  = []

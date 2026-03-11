@@ -57,7 +57,7 @@ class UNet(nn.Module):
  
         return x
 
-    def forward(self, x): # pass other modality for train loop compatiblity
+    def forward(self, x, x2, x3, x4): # pass other modality for train loop compatiblity
  
         x = self.forward_features(x)
         x = self.out(x)
