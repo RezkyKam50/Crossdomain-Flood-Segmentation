@@ -497,6 +497,12 @@ def main(args):
             out_channels=2,
             unet_encoder_size=768
         ),
+        "UNet3Plus": UNet3Plus(
+            cfg=Config_DSUnet3P,
+            n_channels=6,
+            n_classes=2,
+            enable_outc=True
+        ),
         "DSUnet": DSUNet(
             cfg=Config_DSUnet,
             use_prithvi=False,
