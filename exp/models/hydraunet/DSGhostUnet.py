@@ -237,7 +237,7 @@ class DoubleConv(nn.Module):
                 nn.BatchNorm2d(out_ch),
                 nn.ReLU(inplace=True),
                 
-                nn.Conv2d(out_ch, out_ch, 3, padding=4, dilation=4),  # widest
+                nn.Conv2d(out_ch, out_ch, 3, padding=3, dilation=3),  # widest
                 nn.BatchNorm2d(out_ch),
                 nn.ReLU(inplace=True)
             )
