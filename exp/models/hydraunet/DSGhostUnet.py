@@ -257,7 +257,7 @@ class DoubleConv(nn.Module):
 
     def forward(self, x):
 
-        if self.scheme == "rpc":
+        if self.scheme == "prc":
             x = self.bn_proj(self.proj(x))   # project in_ch -> out_ch
             x = self.prc(x)
             x = self.act2(self.bn2(x))
