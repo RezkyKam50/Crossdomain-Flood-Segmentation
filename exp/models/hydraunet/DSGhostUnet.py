@@ -205,7 +205,7 @@ class UNet(nn.Module):
 # sub-parts of the U-Net model
 # DoubleConv with GhostNet
 class DoubleConv(nn.Module):
-    def __init__(self, in_ch, out_ch, scheme="dilated_cnn"):
+    def __init__(self, in_ch, out_ch, scheme="prc"):
         super(DoubleConv, self).__init__()
         self.scheme = scheme
 
@@ -241,7 +241,7 @@ class DoubleConv(nn.Module):
                 nn.BatchNorm2d(out_ch),
                 nn.ReLU(inplace=True)
             )
-        elif scheme == "rpc":
+        elif scheme == "prc":
             self.proj = nn.Conv2d(in_ch, out_ch, 1, bias=False)
             self.bn_proj = nn.BatchNorm2d(out_ch)
             self.prc = PRCNPTNLayer(
