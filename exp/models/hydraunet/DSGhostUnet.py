@@ -58,19 +58,20 @@ class DSGhostUnet(nn.Module):
 
         self.out_conv = OutConv(out_dim, out)
 
+        self.attn_channel = out_dim
+
         if end_attn_scheme == "SE":
             self.feature_attn = SEAttention(
-                # channel=cfg.MODEL.TOPOLOGY[0]
-                channel=out_dim
+                channel=self.attn_channel
             )
         elif end_attn_scheme == "COORD":
             self.feature_attn = CoordAtt(
-                inp=cfg.MODEL.TOPOLOGY[0],
-                oup=cfg.MODEL.TOPOLOGY[0]
+                inp=self.attn_channel,
+                oup=self.attn_channel
             )
         elif end_attn_scheme == "SHUFFLE":
             self.feature_attn = ShuffleAttention(
-                channel=cfg.MODEL.TOPOLOGY[0]
+                channel=self.attn_channel
             )
 
     def change_prithvi_trainability(self, trainable):
@@ -204,7 +205,7 @@ class UNet(nn.Module):
 # sub-parts of the U-Net model
 # DoubleConv with GhostNet
 class DoubleConv(nn.Module):
-    def __init__(self, in_ch, out_ch, scheme="cnn"):
+    def __init__(self, in_ch, out_ch, scheme="dilated_cnn"):
         super(DoubleConv, self).__init__()
         self.scheme = scheme
 
@@ -223,6 +224,20 @@ class DoubleConv(nn.Module):
                 nn.BatchNorm2d(out_ch),
                 nn.ReLU(inplace=True),
                 nn.Conv2d(out_ch, out_ch, 3, padding=1),
+                nn.BatchNorm2d(out_ch),
+                nn.ReLU(inplace=True)
+            )
+        elif scheme == "dilated_cnn":
+            self.conv = nn.Sequential(
+                nn.Conv2d(in_ch, out_ch, 3, padding=1, dilation=1),  # local
+                nn.BatchNorm2d(out_ch),
+                nn.ReLU(inplace=True),
+                
+                nn.Conv2d(out_ch, out_ch, 3, padding=2, dilation=2),  # wider
+                nn.BatchNorm2d(out_ch),
+                nn.ReLU(inplace=True),
+                
+                nn.Conv2d(out_ch, out_ch, 3, padding=4, dilation=4),  # widest
                 nn.BatchNorm2d(out_ch),
                 nn.ReLU(inplace=True)
             )

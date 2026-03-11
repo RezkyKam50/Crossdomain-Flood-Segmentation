@@ -497,10 +497,10 @@ def main(args):
         #     skip_attn_scheme="COORD",
         #     end_attn_scheme="SE"
         # ),
-        "DSUnet_SE": DSGhostUnet(
+        "DSUnet_Shuffle_SE": DSGhostUnet(
             cfg=Config_DSUnet, 
             use_prithvi=False,
-            skip_attn_scheme=None,
+            skip_attn_scheme="SHUFFLE",
             end_attn_scheme="SE",
         ),
         # "DSUnetShuffle_COORD": DSGhostUnet(
