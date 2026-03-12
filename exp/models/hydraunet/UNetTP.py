@@ -187,5 +187,5 @@ class UNet3Plus(nn.Module):
         return self.y1(d1)
 
     def forward(self, x, x2=None, x3=None, x4=None):
-        skips = self.encode(x)
+        skips = self.encode(x2)
         return self.decode(skips)
