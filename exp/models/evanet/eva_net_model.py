@@ -61,7 +61,7 @@ class EvaNet(nn.Module):
         self.out_nonlin = nn.Sigmoid()
 
 
-    def forward(self, x, h):
+    def forward(self, x0, x, h, jrc):
         
         # print("Input: ", x.shape, h.shape)
 
