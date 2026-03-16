@@ -503,13 +503,13 @@ def main(args):
         #     n_classes=2,
         #     enable_outc=True
         # ),
-        # "EvaNet": EvaNet(
-        #     n_channels=6,
-        #     n_classes=2
-        # ),
-        # "DeepLabV3_ResNet50": DeepLabWrapper(deeplabv3_resnet50(num_classes=2)),
-        # "DeepLabV3_MobileNet_V3_Large": DeepLabWrapper(deeplabv3_mobilenet_v3_large(num_classes=2)),
-        "TransUNet": TransUNetWrapper(TransUNet(dim=128, n_class=2, in_ch=6)),  
+        "EvaNet": EvaNet(
+            n_channels=6,
+            n_classes=2
+        ),
+        "DeepLabV3_ResNet50": DeepLabWrapper(deeplabv3_resnet50(num_classes=2)),
+        "DeepLabV3_MobileNet_V3_Large": DeepLabWrapper(deeplabv3_mobilenet_v3_large(num_classes=2)),
+        # "TransUNet": TransUNetWrapper(TransUNet(dim=128, n_class=2, in_ch=6)),  
         # "DSUnet": DSUNet(
         #     cfg=Config_DSUnet,
         #     use_prithvi=False,
