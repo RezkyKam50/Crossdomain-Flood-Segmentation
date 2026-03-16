@@ -492,17 +492,17 @@ def main(args):
     bolivia_loader = get_loader_MM(args.data_path, DatasetType.BOLIVIA.value, args)
  
     models = {
-        "UNet": UNet(
-            in_channels=6,
-            out_channels=2,
-            unet_encoder_size=768
-        ),
-        "UNet3Plus": UNet3Plus(
-            cfg=Config_DSUnet3P,
-            n_channels=6,
-            n_classes=2,
-            enable_outc=True
-        ),
+        # "UNet": UNet(
+        #     in_channels=6,
+        #     out_channels=2,
+        #     unet_encoder_size=768
+        # ),
+        # "UNet3Plus": UNet3Plus(
+        #     cfg=Config_DSUnet3P,
+        #     n_channels=6,
+        #     n_classes=2,
+        #     enable_outc=True
+        # ),
         "EvaNet": EvaNet(
             n_channels=6,
             n_classes=2
@@ -510,31 +510,31 @@ def main(args):
         "DeepLabV3_ResNet50": DeepLabWrapper(deeplabv3_resnet50(num_classes=2)),
         "DeepLabV3_MobileNet_V3_Large": DeepLabWrapper(deeplabv3_mobilenet_v3_large(num_classes=2)),
         "TransUNet": TransUNetWrapper(TransUNet(dim=128, n_class=2, in_ch=6)),  
-        "DSUnet": DSUNet(
-            cfg=Config_DSUnet,
-            use_prithvi=False,
-            use_cm_attn=False,
-            fusion_scheme="late",
-            bottleneck_dropout_prob=None
-        ),
-        "DSUnet_NoSkipAttn_SE": DSGhostUnet(
-            cfg=Config_DSUnet,
-            use_prithvi=False,
-            skip_attn_scheme=None,
-            end_attn_scheme="SE"
-        ),
-        "DSUnet_Shuffle_NoFusionAttn": DSGhostUnet(
-            cfg=Config_DSUnet, 
-            use_prithvi=False,
-            skip_attn_scheme="SHUFFLE",
-            end_attn_scheme=None,
-        ),
-        "DSUnet_Shuffle_SE": DSGhostUnet(
-            cfg=Config_DSUnet, 
-            use_prithvi=False,
-            skip_attn_scheme="SHUFFLE",
-            end_attn_scheme="SE",
-        )
+        # "DSUnet": DSUNet(
+        #     cfg=Config_DSUnet,
+        #     use_prithvi=False,
+        #     use_cm_attn=False,
+        #     fusion_scheme="late",
+        #     bottleneck_dropout_prob=None
+        # ),
+        # "DSUnet_NoSkipAttn_SE": DSGhostUnet(
+        #     cfg=Config_DSUnet,
+        #     use_prithvi=False,
+        #     skip_attn_scheme=None,
+        #     end_attn_scheme="SE"
+        # ),
+        # "DSUnet_Shuffle_NoFusionAttn": DSGhostUnet(
+        #     cfg=Config_DSUnet, 
+        #     use_prithvi=False,
+        #     skip_attn_scheme="SHUFFLE",
+        #     end_attn_scheme=None,
+        # ),
+        # "DSUnet_Shuffle_SE": DSGhostUnet(
+        #     cfg=Config_DSUnet, 
+        #     use_prithvi=False,
+        #     skip_attn_scheme="SHUFFLE",
+        #     end_attn_scheme="SE",
+        # )
     }
 
     results  = []
