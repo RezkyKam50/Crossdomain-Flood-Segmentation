@@ -20,7 +20,7 @@ class InMemoryDataset(torch.utils.data.Dataset):
 
 S1_BANDS = (0, 1)
 S2_BANDS = (1, 2, 3, 8, 11, 12)
-INPUT_SIZE = 224
+INPUT_SIZE = 256
 
 S1_MEANS = [
     0.5772618749337688, 
