@@ -1041,10 +1041,10 @@ class Cross_Att(nn.Module):
 
 
 class TransUNet(nn.Module):
-    def __init__(self, dim, n_class, in_ch=3):
+    def __init__(self, dim, n_class, in_ch=6):
         super().__init__()
-        self.encoder = SwinTransformer(depths=[2, 2, 18, 2], num_heads=[ 4, 8, 16, 32 ], drop_path_rate=0.5, embed_dim=128)
-        self.encoder2 = SwinTransformer(depths=[2, 2, 6, 2], num_heads=[ 3, 6, 12, 24 ], drop_path_rate=0.2, patch_size=8, embed_dim=96)
+        self.encoder = SwinTransformer(depths=[2, 2, 18, 2], num_heads=[ 4, 8, 16, 32 ], drop_path_rate=0.5, embed_dim=128, in_chans=in_ch)
+        self.encoder2 = SwinTransformer(depths=[2, 2, 6, 2], num_heads=[ 3, 6, 12, 24 ], drop_path_rate=0.2, patch_size=8, embed_dim=96, in_chans=in_ch)
         self.encoder.init_weights()
         self.encoder2.init_weights()
         self.layer1 = Swin_Decoder(8*dim, 2, 8)
