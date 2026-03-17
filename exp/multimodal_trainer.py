@@ -96,16 +96,16 @@ def compute_gradnorm(model, running_grad_norm):
 
     return total_norm
 
-def train_model(model, loader, optimizer, criterion, epoch, device, accumulation_steps=2, writer=None):
+def train_model(model, loader, optimizer, criterion, epoch, device, accumulation_steps=None, writer=None):
     model.train()
     running_samples = 0
     running_grad_norm = 0.0
-
     batch_losses = []
     batch_accuracies = []
     batch_ious = []
-
-    optimizer.zero_grad()   
+    optimizer.zero_grad()
+ 
+    effective_accum = accumulation_steps if accumulation_steps is not None else 1
     
     for batch_idx, batch_data in enumerate(tqdm(loader, desc=f"Training Epoch {epoch+1}"), 0):
         sar_imgs, optical_imgs, elevation_imgs, masks, water_occur = batch_data
@@ -116,49 +116,45 @@ def train_model(model, loader, optimizer, criterion, epoch, device, accumulation
         water_occur = water_occur.to(device, non_blocking=True)
         masks = masks.to(device, non_blocking=True)
               
-
         with autocast(device_type="cuda", dtype=torch.bfloat16):
-            outputs = model(sar_imgs, optical_imgs, elevation_imgs, water_occur)   # s1, s2, dem
+            outputs = model(sar_imgs, optical_imgs, elevation_imgs, water_occur)
            
             targets = masks.squeeze(1) if len(masks.shape) > 3 else masks
             if isinstance(criterion, ElevationLoss):
-                loss = criterion(outputs, elevation_imgs, targets.unsqueeze(1).float()) / accumulation_steps
+                loss = criterion(outputs, elevation_imgs, targets.unsqueeze(1).float()) / effective_accum
             else:
-                loss = criterion(outputs, targets.long()) / accumulation_steps
+                loss = criterion(outputs, targets.long()) / effective_accum
             
         loss.backward()
          
         iou = computeIOU(outputs.float(), targets, device)
         accuracy = computeAccuracy(outputs.float(), targets, device)
          
-        if (batch_idx + 1) % accumulation_steps == 0:
+        if (batch_idx + 1) % effective_accum == 0:
             optimizer.step()
-            optimizer.zero_grad()  
+            optimizer.zero_grad()
              
-            if (batch_idx + 1) % (accumulation_steps * 10) == 0:  
-                print(f"  Batch {batch_idx+1}/{len(loader)}: Loss={loss.item()*accumulation_steps:.4f}, GradNorm={compute_gradnorm(model, running_grad_norm):.4f}")
+            if (batch_idx + 1) % (effective_accum * 10) == 0:
+                print(f"  Batch {batch_idx+1}/{len(loader)}: Loss={loss.item()*effective_accum:.4f}, GradNorm={compute_gradnorm(model, running_grad_norm):.4f}")
          
         running_samples += targets.size(0)
-        batch_losses.append(loss.item() * accumulation_steps)
+        batch_losses.append(loss.item() * effective_accum)
         batch_accuracies.append(accuracy.cpu().item() if torch.is_tensor(accuracy) else accuracy)
         batch_ious.append(iou.cpu().item() if torch.is_tensor(iou) else iou)
     
-    if len(loader) % accumulation_steps != 0:
+    if len(loader) % effective_accum != 0:
         optimizer.step()
         optimizer.zero_grad()
 
     batch_losses = np.array(batch_losses)
     batch_accuracies = np.array(batch_accuracies)
     batch_ious = np.array(batch_ious)
-
     avg_loss = np.mean(batch_losses)
     avg_acc = np.mean(batch_accuracies)
     avg_iou = np.mean(batch_ious)
-
     std_loss = np.std(batch_losses)
     std_acc = np.std(batch_accuracies)
     std_iou = np.std(batch_ious)
-
     avg_grad_norm = running_grad_norm / (batch_idx + 1)
      
     writer.add_scalar("GradNorm/train", avg_grad_norm, epoch)
@@ -492,17 +488,17 @@ def main(args):
     bolivia_loader = get_loader_MM(args.data_path, DatasetType.BOLIVIA.value, args)
  
     models = {
-        # "UNet": UNet(
-        #     in_channels=6,
-        #     out_channels=2,
-        #     unet_encoder_size=768
-        # ),
-        # "UNet3Plus": UNet3Plus(
-        #     cfg=Config_DSUnet3P,
-        #     n_channels=6,
-        #     n_classes=2,
-        #     enable_outc=True
-        # ),
+        "UNet": UNet(
+            in_channels=6,
+            out_channels=2,
+            unet_encoder_size=768
+        ),
+        "UNet3Plus": UNet3Plus(
+            cfg=Config_DSUnet3P,
+            n_channels=6,
+            n_classes=2,
+            enable_outc=True
+        ),
         "EvaNet": EvaNet(
             n_channels=6,
             n_classes=2
@@ -510,31 +506,31 @@ def main(args):
         "DeepLabV3_ResNet50": DeepLabWrapper(deeplabv3_resnet50(num_classes=2)),
         "DeepLabV3_MobileNet_V3_Large": DeepLabWrapper(deeplabv3_mobilenet_v3_large(num_classes=2)),
         # "TransUNet": TransUNetWrapper(TransUNet(dim=128, n_class=2, in_ch=6)),  
-        # "DSUnet": DSUNet(
-        #     cfg=Config_DSUnet,
-        #     use_prithvi=False,
-        #     use_cm_attn=False,
-        #     fusion_scheme="late",
-        #     bottleneck_dropout_prob=None
-        # ),
-        # "DSUnet_NoSkipAttn_SE": DSGhostUnet(
-        #     cfg=Config_DSUnet,
-        #     use_prithvi=False,
-        #     skip_attn_scheme=None,
-        #     end_attn_scheme="SE"
-        # ),
-        # "DSUnet_Shuffle_NoFusionAttn": DSGhostUnet(
-        #     cfg=Config_DSUnet, 
-        #     use_prithvi=False,
-        #     skip_attn_scheme="SHUFFLE",
-        #     end_attn_scheme=None,
-        # ),
-        # "DSUnet_Shuffle_SE": DSGhostUnet(
-        #     cfg=Config_DSUnet, 
-        #     use_prithvi=False,
-        #     skip_attn_scheme="SHUFFLE",
-        #     end_attn_scheme="SE",
-        # )
+        "DSUnet": DSUNet(
+            cfg=Config_DSUnet,
+            use_prithvi=False,
+            use_cm_attn=False,
+            fusion_scheme="late",
+            bottleneck_dropout_prob=None
+        ),
+        "DSUnet_NoSkipAttn_SE": DSGhostUnet(
+            cfg=Config_DSUnet,
+            use_prithvi=False,
+            skip_attn_scheme=None,
+            end_attn_scheme="SE"
+        ),
+        "DSUnet_Shuffle_NoFusionAttn": DSGhostUnet(
+            cfg=Config_DSUnet, 
+            use_prithvi=False,
+            skip_attn_scheme="SHUFFLE",
+            end_attn_scheme=None,
+        ),
+        "DSUnet_Shuffle_SE": DSGhostUnet(
+            cfg=Config_DSUnet, 
+            use_prithvi=False,
+            skip_attn_scheme="SHUFFLE",
+            end_attn_scheme="SE",
+        )
     }
 
     results  = []
