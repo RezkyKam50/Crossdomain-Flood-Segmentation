@@ -548,7 +548,13 @@ def main(args):
             use_prithvi=False,
             skip_attn_scheme="COORD",
             end_attn_scheme="SHUFFLE",
-        )
+        ),
+        "DSUnet_Shuffle_Coord": DSGhostUnet(
+            cfg=Config_DSUnet, 
+            use_prithvi=False,
+            skip_attn_scheme="SHUFFLE",
+            end_attn_scheme="COORD",
+        ),
     }
 
     results  = []
