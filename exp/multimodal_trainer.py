@@ -96,7 +96,7 @@ def compute_gradnorm(model, running_grad_norm):
 
     return total_norm
 
-def train_model(model, loader, optimizer, criterion, epoch, device, accumulation_steps=2, writer=None):
+def train_model(model, loader, optimizer, criterion, epoch, device, accumulation_steps=None, writer=None):
     model.train()
     running_samples = 0
     running_grad_norm = 0.0
@@ -481,6 +481,7 @@ def main(args):
     
     torch.backends.cudnn.deterministic = True # same as torch.use_deterministic_algorithms()
     torch.backends.cudnn.benchmark = False
+    torch.use_deterministic_algorithms(True)
   
     train_loader = get_loader_MM(args.data_path, DatasetType.TRAIN.value, args)
     valid_loader = get_loader_MM(args.data_path, DatasetType.VALID.value, args)
