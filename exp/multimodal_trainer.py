@@ -481,7 +481,7 @@ def main(args):
     
     torch.backends.cudnn.deterministic = True # same as torch.use_deterministic_algorithms()
     torch.backends.cudnn.benchmark = False
-    torch.use_deterministic_algorithms(True)
+    # torch.use_deterministic_algorithms(True)
   
     train_loader = get_loader_MM(args.data_path, DatasetType.TRAIN.value, args)
     valid_loader = get_loader_MM(args.data_path, DatasetType.VALID.value, args)
