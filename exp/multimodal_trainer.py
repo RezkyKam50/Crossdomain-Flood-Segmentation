@@ -519,7 +519,7 @@ def main(args):
     
     logger.info("Loading datasets...")
 
-    seeds = [124, 48, 12]
+    seeds = [124]
     all_seed_results = []  
 
     for s in seeds:
@@ -663,7 +663,7 @@ def main(args):
     agg_dir  = './logs'
     agg_file = os.path.join(
         agg_dir,
-        f'multimodal_e{args.epochs}_{args.loss_func}_aggregated.json'
+        f'multimodal_e{args.epochs}_{args.loss_func}_all_seeds.json'
     )
     os.makedirs(agg_dir, exist_ok=True)
     with open(agg_file, 'w') as f:
