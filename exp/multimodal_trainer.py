@@ -32,6 +32,7 @@ import numpy as np
 from enum import Enum
 import argparse
 import json
+from collections import defaultdict
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -68,7 +69,6 @@ def parse_arguments():
     parser.add_argument('--test_interval', type=int, default=1, help='Test the model every n epochs')
     parser.add_argument('--loss_func', type=str, default='bce', help='Loss function to use: bce, dice, dice2, focal, lovasz, tversky')
     parser.add_argument('--finetune_ratio', type=float, default=1, help='Fine-tune ratio for Prithvi models')
-    parser.add_argument('--torch_seed', type=int, default=124, help='Set random seed.')
 
         
     
@@ -464,147 +464,224 @@ def train(model, model_name, train_loader, valid_loader, test_loader, bolivia_lo
         'bolivia_metrics': bolivia_metrics
     }
 
+
+def aggregate_seed_results(all_seed_results):
+ 
+    model_metrics = defaultdict(lambda: defaultdict(list))
+    model_meta   = {}   
+
+    METRIC_SPLITS = ['test_metrics', 'bolivia_metrics']
+ 
+    SKIP_PREFIX = 'std_'
+
+    for seed_entry in all_seed_results:
+        for result in seed_entry['results']:
+            model_name = result['model_name']
+ 
+            if model_name not in model_meta:
+                model_meta[model_name] = {
+                    'num_trainable_params': result.get('num_trainable_params'),
+                    'num_total_params':     result.get('num_total_params'),
+                    'params_phase_1':       result.get('params_phase_1'),
+                    'params_phase_2':       result.get('params_phase_2'),
+                    'params_phase_ft':      result.get('params_pahse_ft'),   
+                }
+
+            for split in METRIC_SPLITS:
+                for metric, value in result[split].items():
+                    if not metric.startswith(SKIP_PREFIX):
+                        key = f"{split}/{metric}"
+                        model_metrics[model_name][key].append(float(value))
+
+    aggregated = []
+    for model_name, metrics in model_metrics.items():
+        entry = {
+            'model_name': model_name,
+            'num_seeds':  len(all_seed_results),
+            **model_meta[model_name],
+        }
+
+        for key, values in metrics.items():
+            arr = np.array(values)
+            entry[f"{key}/mean"]   = float(np.mean(arr))
+            entry[f"{key}/std"]    = float(np.std(arr))
+            entry[f"{key}/values"] = values   
+
+        aggregated.append(entry)
+
+    return aggregated
+
+
 def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     device = torch.device('mps') if torch.backends.mps.is_available() else device
     logger.info(f'Using device: {device}')
     
-    args.version = f"{args.version}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    base_log_dir = f'./logs/Multimodal_{args.epochs}E_{args.loss_func.upper()}_{args.torch_seed}'
-    os.makedirs(base_log_dir, exist_ok=True)
-    
     logger.info("Loading datasets...")
 
-    random.seed(args.torch_seed)
-    torch.manual_seed(args.torch_seed)
-    np.random.seed(args.torch_seed)
+    seeds = [124, 48, 12]
+    all_seed_results = []  
+
+    for s in seeds:
+        random.seed(s)
+        torch.manual_seed(s)
+        np.random.seed(s)
+        
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
     
-    torch.backends.cudnn.deterministic = True # same as torch.use_deterministic_algorithms()
-    torch.backends.cudnn.benchmark = False
-    # torch.use_deterministic_algorithms(True)
-  
-    train_loader = get_loader_MM(args.data_path, DatasetType.TRAIN.value, args)
-    valid_loader = get_loader_MM(args.data_path, DatasetType.VALID.value, args)
-    test_loader = get_loader_MM(args.data_path, DatasetType.TEST.value, args)
-    bolivia_loader = get_loader_MM(args.data_path, DatasetType.BOLIVIA.value, args)
+        args.version = f"{args.version}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        base_log_dir = f'./logs/Multimodal_{args.epochs}E_{args.loss_func.upper()}_{s}'
+        os.makedirs(base_log_dir, exist_ok=True)
+
+        train_loader   = get_loader_MM(args.data_path, DatasetType.TRAIN.value,   args)
+        valid_loader   = get_loader_MM(args.data_path, DatasetType.VALID.value,   args)
+        test_loader    = get_loader_MM(args.data_path, DatasetType.TEST.value,    args)
+        bolivia_loader = get_loader_MM(args.data_path, DatasetType.BOLIVIA.value, args)
+    
+        models = {
+            # "UNet": UNet(
+            #     in_channels=6,
+            #     out_channels=2,
+            #     unet_encoder_size=768
+            # ),
+            # "UNet3Plus": UNet3Plus(
+            #     cfg=Config_DSUnet3P,
+            #     n_channels=6,
+            #     n_classes=2,
+            #     enable_outc=True
+            # ),
+            # "EvaNet": EvaNet(
+            #     n_channels=6,
+            #     n_classes=2
+            # ),
+            # "DeepLabV3_ResNet50": DeepLabWrapper(deeplabv3_resnet50(num_classes=2)),
+            # "DeepLabV3_MobileNet_V3_Large": DeepLabWrapper(deeplabv3_mobilenet_v3_large(num_classes=2)),
+            # # "TransUNet": TransUNetWrapper(TransUNet(dim=128, n_class=2, in_ch=6)),  
+            # "DSUnet": DSUNet(
+            #     cfg=Config_DSUnet,
+            #     use_prithvi=False,
+            #     use_cm_attn=False,
+            #     fusion_scheme="late",
+            #     bottleneck_dropout_prob=None
+            # ),
+            # "DSUnet_NoSkipAttn_SE": DSGhostUnet(
+            #     cfg=Config_DSUnet,
+            #     use_prithvi=False,
+            #     skip_attn_scheme=None,
+            #     end_attn_scheme="SE"
+            # ),
+            # "DSUnet_Shuffle_NoFusionAttn": DSGhostUnet(
+            #     cfg=Config_DSUnet, 
+            #     use_prithvi=False,
+            #     skip_attn_scheme="SHUFFLE",
+            #     end_attn_scheme=None,
+            # ),
+            # "DSUnet_Shuffle_SE": DSGhostUnet(
+            #     cfg=Config_DSUnet, 
+            #     use_prithvi=False,
+            #     skip_attn_scheme="SHUFFLE",
+            #     end_attn_scheme="SE",
+            # ), #
+            # "DSUnet_Coord_NoFusionAttn": DSGhostUnet(
+            #     cfg=Config_DSUnet, 
+            #     use_prithvi=False,
+            #     skip_attn_scheme="COORD",
+            #     end_attn_scheme=None,
+            # ),
+            # "DSUnet_Coord_SE": DSGhostUnet(
+            #     cfg=Config_DSUnet, 
+            #     use_prithvi=False,
+            #     skip_attn_scheme="COORD",
+            #     end_attn_scheme="SE",
+            # ),
+            # "DSUnet_Coord_Shuffle": DSGhostUnet(
+            #     cfg=Config_DSUnet, 
+            #     use_prithvi=False,
+            #     skip_attn_scheme="COORD",
+            #     end_attn_scheme="SHUFFLE",
+            # ),
+            # "DSUnet_NoSkipAttn_Coord": DSGhostUnet(
+            #     cfg=Config_DSUnet, 
+            #     use_prithvi=False,
+            #     skip_attn_scheme=None,
+            #     end_attn_scheme="COORD",
+            # ),
+            # "DSUnet_Shuffle_Coord": DSGhostUnet(
+            #     cfg=Config_DSUnet, 
+            #     use_prithvi=False,
+            #     skip_attn_scheme="SHUFFLE",
+            #     end_attn_scheme="COORD",
+            # ),
+            "DSUnetCoord_COORD": DSGhostUnet(
+                cfg=Config_DSUnet,
+                use_prithvi=False,
+                skip_attn_scheme="COORD",
+                end_attn_scheme="COORD"
+            ),
+            "DSUnetShuffle_COORD": DSGhostUnet(
+                cfg=Config_DSUnet,
+                use_prithvi=False,
+                skip_attn_scheme="SHUFFLE",
+                end_attn_scheme="COORD"
+            ),
+            "DSUnetShuffle_SE": DSGhostUnet(
+                cfg=Config_DSUnet,
+                use_prithvi=False,
+                skip_attn_scheme="SHUFFLE",
+                end_attn_scheme="SE"
+            ),
+            "DSUnetShuffle_SHUFFLE": DSGhostUnet(
+                cfg=Config_DSUnet,
+                use_prithvi=False,
+                skip_attn_scheme="SHUFFLE",
+                end_attn_scheme="SHUFFLE"
+            ),
+        }
+
+        seed_results = []
+        for model_name, model in models.items():
+            model.to(device)
+            result = train(
+                model, model_name, train_loader, valid_loader, test_loader, bolivia_loader, 
+                args, device, base_log_dir
+            )
+            torch.cuda.empty_cache()
+            del model
+            seed_results.append(result)
  
-    models = {
-        # "UNet": UNet(
-        #     in_channels=6,
-        #     out_channels=2,
-        #     unet_encoder_size=768
-        # ),
-        # "UNet3Plus": UNet3Plus(
-        #     cfg=Config_DSUnet3P,
-        #     n_channels=6,
-        #     n_classes=2,
-        #     enable_outc=True
-        # ),
-        # "EvaNet": EvaNet(
-        #     n_channels=6,
-        #     n_classes=2
-        # ),
-        # "DeepLabV3_ResNet50": DeepLabWrapper(deeplabv3_resnet50(num_classes=2)),
-        # "DeepLabV3_MobileNet_V3_Large": DeepLabWrapper(deeplabv3_mobilenet_v3_large(num_classes=2)),
-        # # "TransUNet": TransUNetWrapper(TransUNet(dim=128, n_class=2, in_ch=6)),  
-        # "DSUnet": DSUNet(
-        #     cfg=Config_DSUnet,
-        #     use_prithvi=False,
-        #     use_cm_attn=False,
-        #     fusion_scheme="late",
-        #     bottleneck_dropout_prob=None
-        # ),
-        # "DSUnet_NoSkipAttn_SE": DSGhostUnet(
-        #     cfg=Config_DSUnet,
-        #     use_prithvi=False,
-        #     skip_attn_scheme=None,
-        #     end_attn_scheme="SE"
-        # ),
-        # "DSUnet_Shuffle_NoFusionAttn": DSGhostUnet(
-        #     cfg=Config_DSUnet, 
-        #     use_prithvi=False,
-        #     skip_attn_scheme="SHUFFLE",
-        #     end_attn_scheme=None,
-        # ),
-        # "DSUnet_Shuffle_SE": DSGhostUnet(
-        #     cfg=Config_DSUnet, 
-        #     use_prithvi=False,
-        #     skip_attn_scheme="SHUFFLE",
-        #     end_attn_scheme="SE",
-        # ), #
-        # "DSUnet_Coord_NoFusionAttn": DSGhostUnet(
-        #     cfg=Config_DSUnet, 
-        #     use_prithvi=False,
-        #     skip_attn_scheme="COORD",
-        #     end_attn_scheme=None,
-        # ),
-        # "DSUnet_Coord_SE": DSGhostUnet(
-        #     cfg=Config_DSUnet, 
-        #     use_prithvi=False,
-        #     skip_attn_scheme="COORD",
-        #     end_attn_scheme="SE",
-        # ),
-        # "DSUnet_Coord_Shuffle": DSGhostUnet(
-        #     cfg=Config_DSUnet, 
-        #     use_prithvi=False,
-        #     skip_attn_scheme="COORD",
-        #     end_attn_scheme="SHUFFLE",
-        # ),
-        # "DSUnet_NoSkipAttn_Coord": DSGhostUnet(
-        #     cfg=Config_DSUnet, 
-        #     use_prithvi=False,
-        #     skip_attn_scheme=None,
-        #     end_attn_scheme="COORD",
-        # ),
-        # "DSUnet_Shuffle_Coord": DSGhostUnet(
-        #     cfg=Config_DSUnet, 
-        #     use_prithvi=False,
-        #     skip_attn_scheme="SHUFFLE",
-        #     end_attn_scheme="COORD",
-        # ),
-        "DSUnetCoord_COORD": DSGhostUnet(
-            cfg=Config_DSUnet,
-            use_prithvi=False,
-            skip_attn_scheme="COORD",
-            end_attn_scheme="COORD"
-        ),
-        "DSUnetShuffle_COORD": DSGhostUnet(
-            cfg=Config_DSUnet,
-            use_prithvi=False,
-            skip_attn_scheme="SHUFFLE",
-            end_attn_scheme="COORD"
-        ),
-        "DSUnetShuffle_SE": DSGhostUnet(
-            cfg=Config_DSUnet,
-            use_prithvi=False,
-            skip_attn_scheme="SHUFFLE",
-            end_attn_scheme="SE"
-        ),
-        "DSUnetShuffle_SHUFFLE": DSGhostUnet(
-            cfg=Config_DSUnet,
-            use_prithvi=False,
-            skip_attn_scheme="SHUFFLE",
-            end_attn_scheme="SHUFFLE"
-        ),
-    }
+        results_file = os.path.join(base_log_dir, f'multimodal_e{args.epochs}_{args.loss_func}.json')
+        with open(results_file, 'w') as f:
+            json.dump(seed_results, f, indent=4, default=float)
+        logger.info(f"Seed {s} results saved to: {results_file}")
+ 
+        all_seed_results.append({'seed': s, 'results': seed_results})
 
-    results  = []
-    for model_name, model in models.items():
-        model.to(device)
-        result = train(
-            model, model_name, train_loader, valid_loader, test_loader, bolivia_loader, 
-            args, device, base_log_dir
-        )
-        torch.cuda.empty_cache()
-        del model
-        results.append(result)
-    
+ 
+    aggregated = aggregate_seed_results(all_seed_results)
+ 
+    agg_dir  = './logs'
+    agg_file = os.path.join(
+        agg_dir,
+        f'multimodal_e{args.epochs}_{args.loss_func}_aggregated.json'
+    )
+    os.makedirs(agg_dir, exist_ok=True)
+    with open(agg_file, 'w') as f:
+        json.dump(aggregated, f, indent=4, default=float)
+    logger.info(f"\nAggregated cross-seed results saved to: {agg_file}")
+ 
+    for entry in aggregated:
+        logger.info(f"\nModel: {entry['model_name']}  (n={entry['num_seeds']} seeds)")
+        for split in ['test_metrics', 'bolivia_metrics']:
+            logger.info(f"  [{split}]")
+            for metric in ['Avg_IOU', 'Avg_ACC', 'Loss']:
+                key = f"{split}/{metric}"
+                if f"{key}/mean" in entry:
+                    logger.info(
+                        f"    {metric}: {entry[f'{key}/mean']:.4f} ± {entry[f'{key}/std']:.4f}  "
+                        f"(values: {[round(v,4) for v in entry[f'{key}/values']]})"
+                    )
 
-    results_file = os.path.join(base_log_dir, f'multimodal_e{args.epochs}_{args.loss_func}.json')
-    with open(results_file, 'w') as f:
-        json.dump(results, f, indent=4, default=float)
-    logger.info(f"\nResults saved to: {results_file}")
-    
 
 if __name__ == '__main__':
     args = parse_arguments()
