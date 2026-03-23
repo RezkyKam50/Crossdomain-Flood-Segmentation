@@ -96,7 +96,7 @@ def compute_gradnorm(model, running_grad_norm):
 
     return total_norm
 
-def train_model(model, loader, optimizer, criterion, epoch, device, accumulation_steps=None, writer=None):
+def train_model(model, loader, optimizer, criterion, epoch, device, accumulation_steps=2, writer=None):
     model.train()
     running_samples = 0
     running_grad_norm = 0.0
@@ -489,78 +489,102 @@ def main(args):
     bolivia_loader = get_loader_MM(args.data_path, DatasetType.BOLIVIA.value, args)
  
     models = {
-        "UNet": UNet(
-            in_channels=6,
-            out_channels=2,
-            unet_encoder_size=768
-        ),
-        "UNet3Plus": UNet3Plus(
-            cfg=Config_DSUnet3P,
-            n_channels=6,
-            n_classes=2,
-            enable_outc=True
-        ),
-        "EvaNet": EvaNet(
-            n_channels=6,
-            n_classes=2
-        ),
-        "DeepLabV3_ResNet50": DeepLabWrapper(deeplabv3_resnet50(num_classes=2)),
-        "DeepLabV3_MobileNet_V3_Large": DeepLabWrapper(deeplabv3_mobilenet_v3_large(num_classes=2)),
-        # "TransUNet": TransUNetWrapper(TransUNet(dim=128, n_class=2, in_ch=6)),  
-        "DSUnet": DSUNet(
+        # "UNet": UNet(
+        #     in_channels=6,
+        #     out_channels=2,
+        #     unet_encoder_size=768
+        # ),
+        # "UNet3Plus": UNet3Plus(
+        #     cfg=Config_DSUnet3P,
+        #     n_channels=6,
+        #     n_classes=2,
+        #     enable_outc=True
+        # ),
+        # "EvaNet": EvaNet(
+        #     n_channels=6,
+        #     n_classes=2
+        # ),
+        # "DeepLabV3_ResNet50": DeepLabWrapper(deeplabv3_resnet50(num_classes=2)),
+        # "DeepLabV3_MobileNet_V3_Large": DeepLabWrapper(deeplabv3_mobilenet_v3_large(num_classes=2)),
+        # # "TransUNet": TransUNetWrapper(TransUNet(dim=128, n_class=2, in_ch=6)),  
+        # "DSUnet": DSUNet(
+        #     cfg=Config_DSUnet,
+        #     use_prithvi=False,
+        #     use_cm_attn=False,
+        #     fusion_scheme="late",
+        #     bottleneck_dropout_prob=None
+        # ),
+        # "DSUnet_NoSkipAttn_SE": DSGhostUnet(
+        #     cfg=Config_DSUnet,
+        #     use_prithvi=False,
+        #     skip_attn_scheme=None,
+        #     end_attn_scheme="SE"
+        # ),
+        # "DSUnet_Shuffle_NoFusionAttn": DSGhostUnet(
+        #     cfg=Config_DSUnet, 
+        #     use_prithvi=False,
+        #     skip_attn_scheme="SHUFFLE",
+        #     end_attn_scheme=None,
+        # ),
+        # "DSUnet_Shuffle_SE": DSGhostUnet(
+        #     cfg=Config_DSUnet, 
+        #     use_prithvi=False,
+        #     skip_attn_scheme="SHUFFLE",
+        #     end_attn_scheme="SE",
+        # ), #
+        # "DSUnet_Coord_NoFusionAttn": DSGhostUnet(
+        #     cfg=Config_DSUnet, 
+        #     use_prithvi=False,
+        #     skip_attn_scheme="COORD",
+        #     end_attn_scheme=None,
+        # ),
+        # "DSUnet_Coord_SE": DSGhostUnet(
+        #     cfg=Config_DSUnet, 
+        #     use_prithvi=False,
+        #     skip_attn_scheme="COORD",
+        #     end_attn_scheme="SE",
+        # ),
+        # "DSUnet_Coord_Shuffle": DSGhostUnet(
+        #     cfg=Config_DSUnet, 
+        #     use_prithvi=False,
+        #     skip_attn_scheme="COORD",
+        #     end_attn_scheme="SHUFFLE",
+        # ),
+        # "DSUnet_NoSkipAttn_Coord": DSGhostUnet(
+        #     cfg=Config_DSUnet, 
+        #     use_prithvi=False,
+        #     skip_attn_scheme=None,
+        #     end_attn_scheme="COORD",
+        # ),
+        # "DSUnet_Shuffle_Coord": DSGhostUnet(
+        #     cfg=Config_DSUnet, 
+        #     use_prithvi=False,
+        #     skip_attn_scheme="SHUFFLE",
+        #     end_attn_scheme="COORD",
+        # ),
+        "DSUnetCoord_COORD": DSGhostUnet(
             cfg=Config_DSUnet,
             use_prithvi=False,
-            use_cm_attn=False,
-            fusion_scheme="late",
-            bottleneck_dropout_prob=None
+            skip_attn_scheme="COORD",
+            end_attn_scheme="COORD"
         ),
-        "DSUnet_NoSkipAttn_SE": DSGhostUnet(
+        "DSUnetShuffle_COORD": DSGhostUnet(
             cfg=Config_DSUnet,
             use_prithvi=False,
-            skip_attn_scheme=None,
+            skip_attn_scheme="SHUFFLE",
+            end_attn_scheme="COORD"
+        ),
+        "DSUnetShuffle_SE": DSGhostUnet(
+            cfg=Config_DSUnet,
+            use_prithvi=False,
+            skip_attn_scheme="SHUFFLE",
             end_attn_scheme="SE"
         ),
-        "DSUnet_Shuffle_NoFusionAttn": DSGhostUnet(
-            cfg=Config_DSUnet, 
+        "DSUnetShuffle_SHUFFLE": DSGhostUnet(
+            cfg=Config_DSUnet,
             use_prithvi=False,
             skip_attn_scheme="SHUFFLE",
-            end_attn_scheme=None,
-        ),
-        "DSUnet_Shuffle_SE": DSGhostUnet(
-            cfg=Config_DSUnet, 
-            use_prithvi=False,
-            skip_attn_scheme="SHUFFLE",
-            end_attn_scheme="SE",
-        ), #
-        "DSUnet_Coord_NoFusionAttn": DSGhostUnet(
-            cfg=Config_DSUnet, 
-            use_prithvi=False,
-            skip_attn_scheme="COORD",
-            end_attn_scheme=None,
-        ),
-        "DSUnet_Coord_SE": DSGhostUnet(
-            cfg=Config_DSUnet, 
-            use_prithvi=False,
-            skip_attn_scheme="COORD",
-            end_attn_scheme="SE",
-        ),
-        "DSUnet_Coord_Shuffle": DSGhostUnet(
-            cfg=Config_DSUnet, 
-            use_prithvi=False,
-            skip_attn_scheme="COORD",
-            end_attn_scheme="SHUFFLE",
-        ),
-        "DSUnet_NoSkipAttn_Coord": DSGhostUnet(
-            cfg=Config_DSUnet, 
-            use_prithvi=False,
-            skip_attn_scheme=None,
-            end_attn_scheme="COORD",
-        ),
-        "DSUnet_Shuffle_Coord": DSGhostUnet(
-            cfg=Config_DSUnet, 
-            use_prithvi=False,
-            skip_attn_scheme="SHUFFLE",
-            end_attn_scheme="COORD",
+            end_attn_scheme="SHUFFLE"
         ),
     }
 
