@@ -613,30 +613,30 @@ def main(args):
             #     skip_attn_scheme="SHUFFLE",
             #     end_attn_scheme="COORD",
             # ),
-            "DSUnetCoord_COORD": DSGhostUnet(
+            # "DSUnetCoord_COORD": DSGhostUnet(
+            #     cfg=Config_DSUnet,
+            #     use_prithvi=False,
+            #     skip_attn_scheme="COORD",
+            #     end_attn_scheme="COORD"
+            # ),
+            # "DSUnetShuffle_COORD": DSGhostUnet(
+            #     cfg=Config_DSUnet,
+            #     use_prithvi=False,
+            #     skip_attn_scheme="SHUFFLE",
+            #     end_attn_scheme="COORD"
+            # ),
+            "DSUnetCoord_Shuffle": DSGhostUnet(
                 cfg=Config_DSUnet,
                 use_prithvi=False,
                 skip_attn_scheme="COORD",
-                end_attn_scheme="COORD"
-            ),
-            "DSUnetShuffle_COORD": DSGhostUnet(
-                cfg=Config_DSUnet,
-                use_prithvi=False,
-                skip_attn_scheme="SHUFFLE",
-                end_attn_scheme="COORD"
-            ),
-            "DSUnetShuffle_SE": DSGhostUnet(
-                cfg=Config_DSUnet,
-                use_prithvi=False,
-                skip_attn_scheme="SHUFFLE",
-                end_attn_scheme="SE"
-            ),
-            "DSUnetShuffle_SHUFFLE": DSGhostUnet(
-                cfg=Config_DSUnet,
-                use_prithvi=False,
-                skip_attn_scheme="SHUFFLE",
                 end_attn_scheme="SHUFFLE"
             ),
+            # "DSUnetShuffle_SHUFFLE": DSGhostUnet(
+            #     cfg=Config_DSUnet,
+            #     use_prithvi=False,
+            #     skip_attn_scheme="SHUFFLE",
+            #     end_attn_scheme="SHUFFLE"
+            # ),
         }
 
         seed_results = []
