@@ -9,8 +9,8 @@ from models.deeplab import DeepLabWrapper
 
 from models.hydraunet.UNet import UNet
 from models.hydraunet.UNetTP import UNet3Plus
-from models.hydraunet.DSUnet import DSUNet          # Dual Modality Classical UNet
-from models.hydraunet.DSGhostUnet import DSGhostUnet
+from models.hydraunet.DSUnetExp import DSUnetExp          # Dual Modality Classical UNet
+from models.hydraunet.DSUnet import DSUNet
 from models.transunet import TransUNet, TransUNetWrapper
 
 
@@ -253,7 +253,7 @@ def test(model, loader, criterion, device):
         'std_Avg_ACC': np.std(batch_avg_acc),
     }
 
-def ph_loop(model, train_loader, valid_loader, criterion, device, writer, scheduler, optimizer, args):
+def ph_loop(model, train_loader, valid_loader, criterion, device, writer, scheduler, optimizer, model_dir, args):
     
     num_params_phase_n = get_number_of_trainable_parameters(model)
 
@@ -295,6 +295,11 @@ def ph_loop(model, train_loader, valid_loader, criterion, device, writer, schedu
             
             for metric_name, metric_value in val_metrics.items():
                 writer.add_scalar(f"{metric_name}/valid", metric_value, epoch)
+
+        if model_dir and (epoch + 1) % 100 == 0:
+            checkpoint_path = os.path.join(model_dir, f"checkpoint_epoch_{epoch+1}.pt")
+            torch.save(model.state_dict(), checkpoint_path)
+            logger.info(f"Checkpoint saved: {checkpoint_path}")
 
     phase_summary = {
         'mean_train_loss': float(np.mean(phase_metrics['train_losses'])),
@@ -394,7 +399,7 @@ def train(model, model_name, train_loader, valid_loader, test_loader, bolivia_lo
     elif args.loss_func == 'lovasz':
         criterion = LovaszLoss(mode='multiclass', per_image=False, from_logits=True, ignore_index=255)
     elif args.loss_func == 'tversky':
-        criterion = TverskyLoss(mode='multiclass', alpha=0.3, beta=0.7, gamma=1.33, eps=1e-7, ignore_index=255, from_logits=True)
+        criterion = TverskyLoss(mode='multiclass', alpha=0.3, beta=0.7, gamma=2.0, eps=1e-7, ignore_index=255, from_logits=True)
     elif args.loss_func == 'evaloss':
         criterion = ElevationLoss(use_tversky=False)
 
@@ -414,7 +419,7 @@ def train(model, model_name, train_loader, valid_loader, test_loader, bolivia_lo
     #     model.change_prithvi_trainability(False) # Freeze prithvi
     #     logger.info(f"Module S2 frozen. Trainable parameters: {get_number_of_trainable_parameters(model):,}")
 
-    num_params_phase_1 = ph_loop(model, train_loader, valid_loader, criterion, device, writer, scheduler, optimizer, args)
+    num_params_phase_1 = ph_loop(model, train_loader, valid_loader, criterion, device, writer, scheduler, optimizer, model_dir, args)
     torch.cuda.empty_cache()
 
     # # Full Phase 2
@@ -544,99 +549,28 @@ def main(args):
             #     in_channels=6,
             #     out_channels=2,
             #     unet_encoder_size=768
-            # ),
-            # "UNet3Plus": UNet3Plus(
-            #     cfg=Config_DSUnet3P,
-            #     n_channels=6,
-            #     n_classes=2,
-            #     enable_outc=True
-            # ),
-            # "EvaNet": EvaNet(
-            #     n_channels=6,
-            #     n_classes=2
-            # ),
-            # "DeepLabV3_ResNet50": DeepLabWrapper(deeplabv3_resnet50(num_classes=2)),
-            # "DeepLabV3_MobileNet_V3_Large": DeepLabWrapper(deeplabv3_mobilenet_v3_large(num_classes=2)),
-            # # "TransUNet": TransUNetWrapper(TransUNet(dim=128, n_class=2, in_ch=6)),  
-            # "DSUnet": DSUNet(
-            #     cfg=Config_DSUnet,
-            #     use_prithvi=False,
-            #     use_cm_attn=False,
-            #     fusion_scheme="late",
-            #     bottleneck_dropout_prob=None
-            # ),
-            # "DSUnet_NoSkipAttn_SE": DSGhostUnet(
-            #     cfg=Config_DSUnet,
-            #     use_prithvi=False,
-            #     skip_attn_scheme=None,
-            #     end_attn_scheme="SE"
-            # ),
-            # "DSUnet_Shuffle_NoFusionAttn": DSGhostUnet(
-            #     cfg=Config_DSUnet, 
-            #     use_prithvi=False,
-            #     skip_attn_scheme="SHUFFLE",
-            #     end_attn_scheme=None,
-            # ),
-            # "DSUnet_Shuffle_SE": DSGhostUnet(
-            #     cfg=Config_DSUnet, 
-            #     use_prithvi=False,
-            #     skip_attn_scheme="SHUFFLE",
-            #     end_attn_scheme="SE",
-            # ), #
-            # "DSUnet_Coord_NoFusionAttn": DSGhostUnet(
-            #     cfg=Config_DSUnet, 
-            #     use_prithvi=False,
-            #     skip_attn_scheme="COORD",
-            #     end_attn_scheme=None,
-            # ),
-            # "DSUnet_Coord_SE": DSGhostUnet(
-            #     cfg=Config_DSUnet, 
-            #     use_prithvi=False,
-            #     skip_attn_scheme="COORD",
-            #     end_attn_scheme="SE",
-            # ),
-            # "DSUnet_Coord_Shuffle": DSGhostUnet(
-            #     cfg=Config_DSUnet, 
-            #     use_prithvi=False,
-            #     skip_attn_scheme="COORD",
-            #     end_attn_scheme="SHUFFLE",
-            # ),
-            # "DSUnet_NoSkipAttn_Coord": DSGhostUnet(
-            #     cfg=Config_DSUnet, 
-            #     use_prithvi=False,
-            #     skip_attn_scheme=None,
-            #     end_attn_scheme="COORD",
-            # ),
-            # "DSUnet_Shuffle_Coord": DSGhostUnet(
-            #     cfg=Config_DSUnet, 
-            #     use_prithvi=False,
-            #     skip_attn_scheme="SHUFFLE",
-            #     end_attn_scheme="COORD",
-            # ),
-            # "DSUnetCoord_COORD": DSGhostUnet(
-            #     cfg=Config_DSUnet,
-            #     use_prithvi=False,
-            #     skip_attn_scheme="COORD",
-            #     end_attn_scheme="COORD"
-            # ),
-            # "DSUnetShuffle_COORD": DSGhostUnet(
-            #     cfg=Config_DSUnet,
-            #     use_prithvi=False,
-            #     skip_attn_scheme="SHUFFLE",
-            #     end_attn_scheme="COORD"
-            # ),
-            "DSUnetCoord_Shuffle": DSGhostUnet(
+            # )
+            "DSUnet_EarlyFS": DSUNet(
                 cfg=Config_DSUnet,
                 use_prithvi=False,
-                skip_attn_scheme="COORD",
-                end_attn_scheme="SHUFFLE"
+                use_cm_attn=None,
+                fusion_scheme="early",
+                bottleneck_dropout_prob=None
             ),
-            # "DSUnetShuffle_SHUFFLE": DSGhostUnet(
-            #     cfg=Config_DSUnet,
-            #     use_prithvi=False,
-            #     skip_attn_scheme="SHUFFLE",
-            #     end_attn_scheme="SHUFFLE"
-            # ),
+            "DSUnet_MiddleFS": DSUNet(
+                cfg=Config_DSUnet,
+                use_prithvi=False,
+                use_cm_attn=None,
+                fusion_scheme="middle",
+                bottleneck_dropout_prob=None
+            ),
+            "DSUnet_LateFS": DSUNet(
+                cfg=Config_DSUnet,
+                use_prithvi=False,
+                use_cm_attn=None,
+                fusion_scheme="late",
+                bottleneck_dropout_prob=None
+            )
         }
 
         seed_results = []

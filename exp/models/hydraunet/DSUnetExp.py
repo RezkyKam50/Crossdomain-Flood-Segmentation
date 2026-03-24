@@ -10,10 +10,10 @@ from models.hydraunet.Attention import *
 # Dual Stream Classical UNet
 
 # Reference from DS_Unet https://github.com/SebastianHafner/DS_UNet/blob/master/utils/networks.py
-class DSGhostUnet(nn.Module):
+class DSUnetExp(nn.Module):
 
     def __init__(self, cfg, use_prithvi=None, skip_attn_scheme=None, end_attn_scheme=None):
-        super(DSGhostUnet, self).__init__()
+        super(DSUnetExp, self).__init__()
         assert (cfg.DATASET.MODE == 'fusion')
         self._cfg = cfg
         out = cfg.MODEL.OUT_CHANNELS
