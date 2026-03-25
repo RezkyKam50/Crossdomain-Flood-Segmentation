@@ -422,7 +422,7 @@ def train(model, model_name, train_loader, valid_loader, test_loader, bolivia_lo
     num_params_phase_1 = ph_loop(model, train_loader, valid_loader, criterion, device, writer, scheduler, optimizer, model_dir, args)
     torch.cuda.empty_cache()
 
-    # # Full Phase 2
+    # Full Phase 2
     if model_name in three_phase_model and args.finetune_ratio is not None:
         model.change_s1_trainability(False) # Freeze S2, update S1
         model.change_s2_trainability(True)
@@ -430,7 +430,7 @@ def train(model, model_name, train_loader, valid_loader, test_loader, bolivia_lo
     num_params_phase_2 = ph_loop(model, train_loader, valid_loader, criterion, device, writer, scheduler, optimizer, model_dir, args)
     torch.cuda.empty_cache()
 
-    # # FT Phase 3
+    # FT Phase 3
     if model_name in three_phase_model and args.finetune_ratio is not None:
         model.change_s1_trainability(True)
         model.change_s2_trainability(True)
