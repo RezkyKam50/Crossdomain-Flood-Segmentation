@@ -416,7 +416,7 @@ def train(model, model_name, train_loader, valid_loader, test_loader, bolivia_lo
     if model_name in three_phase_model and args.finetune_ratio is not None:
         model.change_s1_trainability(True) 
         model.change_s2_trainability(False) # Freeze S1, update S2
-        model.change_prithvi_trainability(False) # Freeze prithvi
+        # model.change_prithvi_trainability(False) # Freeze prithvi
         logger.info(f"Module S2 frozen. Trainable parameters: {get_number_of_trainable_parameters(model):,}")
 
     num_params_phase_1 = ph_loop(model, train_loader, valid_loader, criterion, device, writer, scheduler, optimizer, model_dir, args)
@@ -434,7 +434,7 @@ def train(model, model_name, train_loader, valid_loader, test_loader, bolivia_lo
     if model_name in three_phase_model and args.finetune_ratio is not None:
         model.change_s1_trainability(True)
         model.change_s2_trainability(True)
-        model.change_prithvi_trainability(True) # Unfreeze Prithvi
+        # model.change_prithvi_trainability(True) # Unfreeze Prithvi
         logger.info(f"All weights unfrozen. Trainable parameters: {get_number_of_trainable_parameters(model):,}")
         num_params_phase_ft = ft_loop(model, model_name, train_loader, valid_loader, criterion, device, writer, scheduler, optimizer, model_dir, args)
 
