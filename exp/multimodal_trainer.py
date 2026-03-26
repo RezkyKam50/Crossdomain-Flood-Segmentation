@@ -571,7 +571,7 @@ def main(args):
             #     fusion_scheme="late",
             #     bottleneck_dropout_prob=None
             # )
-            "DSUNet_Shuffle_SE": DSUnetExp(
+            "DSUNet_Coord_SE": DSUnetExp(
                 cfg=Config_DSUnet,
                 use_prithvi=False,
                 skip_attn_scheme="COORD",
