@@ -60,7 +60,7 @@ class DSUNet(nn.Module):
                     device="cuda" if torch.cuda.is_available() else "cpu",
                     target_channels=cfg.MODEL.TOPOLOGY[-1]
                 )
-            self.out_conv = OutConv(2 * topology[0], out)
+            self.out_conv = OutConv(2 * topology[0] , out)
 
         elif fusion_scheme == "middle":
  

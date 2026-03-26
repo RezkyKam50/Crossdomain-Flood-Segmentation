@@ -550,26 +550,32 @@ def main(args):
             #     out_channels=2,
             #     unet_encoder_size=768
             # )
-            "DSUnet_EarlyFS": DSUNet(
+            # "DSUnet_EarlyFS": DSUNet(
+            #     cfg=Config_DSUnet,
+            #     use_prithvi=False,
+            #     use_cm_attn=None,
+            #     fusion_scheme="early",
+            #     bottleneck_dropout_prob=None
+            # ),
+            # "DSUnet_MiddleFS": DSUNet(
+            #     cfg=Config_DSUnet,
+            #     use_prithvi=False,
+            #     use_cm_attn=None,
+            #     fusion_scheme="middle",
+            #     bottleneck_dropout_prob=None
+            # ),
+            # "DSUnet_LateFS": DSUNet(
+            #     cfg=Config_DSUnet,
+            #     use_prithvi=False,
+            #     use_cm_attn=None,
+            #     fusion_scheme="late",
+            #     bottleneck_dropout_prob=None
+            # )
+            "DSUNet_Shuffle_SE": DSUnetExp(
                 cfg=Config_DSUnet,
                 use_prithvi=False,
-                use_cm_attn=None,
-                fusion_scheme="early",
-                bottleneck_dropout_prob=None
-            ),
-            "DSUnet_MiddleFS": DSUNet(
-                cfg=Config_DSUnet,
-                use_prithvi=False,
-                use_cm_attn=None,
-                fusion_scheme="middle",
-                bottleneck_dropout_prob=None
-            ),
-            "DSUnet_LateFS": DSUNet(
-                cfg=Config_DSUnet,
-                use_prithvi=False,
-                use_cm_attn=None,
-                fusion_scheme="late",
-                bottleneck_dropout_prob=None
+                skip_attn_scheme="SHUFFLE",
+                end_attn_scheme="SE"
             )
         }
 
