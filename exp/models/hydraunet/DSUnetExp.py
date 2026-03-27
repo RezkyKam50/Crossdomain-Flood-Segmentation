@@ -12,7 +12,7 @@ from models.hydraunet.Attention import *
 # Reference from DS_Unet https://github.com/SebastianHafner/DS_UNet/blob/master/utils/networks.py
 class DSUnetExp(nn.Module):
 
-    def __init__(self, cfg, use_prithvi=None, skip_attn_scheme=None, end_attn_scheme=None):
+    def __init__(self, cfg, use_prithvi=None, skip_attn_scheme=None, end_attn_scheme=None, sep_end_attn=True):
         super(DSUnetExp, self).__init__()
         assert (cfg.DATASET.MODE == 'fusion')
         self._cfg = cfg
@@ -61,20 +61,29 @@ class DSUnetExp(nn.Module):
         self.attn_channel = cfg.MODEL.TOPOLOGY[0]
 
         if end_attn_scheme == "SE":
-            self.feature_attn = SEAttention(
-                channel=self.attn_channel
-            )
+            if sep_end_attn:
+                self.s1_feat = SEAttention(channel=self.attn_channel)
+                self.s2_feat = SEAttention(channel=self.attn_channel)
+            else:
+                self.feature_attn = SEAttention(channel=self.attn_channel)
+
         elif end_attn_scheme == "COORD":
-            self.feature_attn = CoordAtt(
-                inp=self.attn_channel,
-                oup=self.attn_channel
-            )
+            if sep_end_attn:
+                self.s1_feat = CoordAtt(inp=self.attn_channel, oup=self.attn_channel)
+                self.s2_feat = CoordAtt(inp=self.attn_channel, oup=self.attn_channel)
+            else:
+                self.feature_attn = CoordAtt(inp=self.attn_channel, oup=self.attn_channel)
+
         elif end_attn_scheme == "SHUFFLE":
-            self.feature_attn = ShuffleAttention(
-                channel=self.attn_channel
-            )
-        elif end_attn_scheme == None:
+            if sep_end_attn:
+                self.s1_feat = ShuffleAttention(channel=self.attn_channel)
+                self.s2_feat = ShuffleAttention(channel=self.attn_channel)
+            else:
+                self.feature_attn = ShuffleAttention(channel=self.attn_channel)
+
+        elif end_attn_scheme is None:
             self.feature_attn = nn.Identity()
+ 
 
     def change_prithvi_trainability(self, trainable):
         if self.use_prithvi:
@@ -104,9 +113,14 @@ class DSUnetExp(nn.Module):
         # print(f"DEM SH: {dem_img.shape}")
         s1_feature = torch.cat([dem_img, water_occur, s1_img], dim=1) # B, 1 + 1 + 2, H, W
         s1_feature = self.s1_stream(s1_feature)
-        s1_feature = self.feature_attn(s1_feature)
         s2_feature = self.s2_stream(s2_img)     
-        s2_feature = self.feature_attn(s2_feature)
+
+        if self.sep_end_attn:
+            s1_feature = self.s1_feat(s1_feature)
+            s2_feature = self.s2_feat(s2_feature)
+        else:
+            s1_feature = self.feature_attn(s1_feature)
+            s2_feature = self.feature_attn(s2_feature)
 
         # aux attention on S1 features
         # aux = torch.cat([dem_img, water_occur], dim=1)  # [B, 2, H, W]
