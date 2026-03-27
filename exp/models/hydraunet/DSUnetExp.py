@@ -60,6 +60,7 @@ class DSUnetExp(nn.Module):
 
         self.attn_channel = cfg.MODEL.TOPOLOGY[0]
 
+        self.sep_end_attn = sep_end_attn
         if end_attn_scheme == "SE":
             if sep_end_attn:
                 self.s1_feat = SEAttention(channel=self.attn_channel)
