@@ -140,112 +140,33 @@ class DSUnetExp(nn.Module):
         return out
 
 
-# class UNet(nn.Module):
-#     def __init__(self, cfg, n_channels=None, n_classes=None, topology=None, enable_outc=True, attn_scheme=None):
-#         self._cfg = cfg
-#         n_channels = cfg.MODEL.IN_CHANNELS if n_channels is None else n_channels
-#         n_classes = cfg.MODEL.OUT_CHANNELS if n_classes is None else n_classes
-#         topology = cfg.MODEL.TOPOLOGY if topology is None else topology
-#         super(UNet, self).__init__()
-#         first_chan = topology[0]
-#         self.inc = InConv(n_channels, first_chan, DoubleConv)
-#         self.enable_outc = enable_outc
-#         self.outc = OutConv(first_chan, n_classes)
-#         # Variable scale
-#         down_topo = topology
-#         down_dict = OrderedDict()
-#         n_layers = len(down_topo)
-#         up_topo = [first_chan]  # topography upwards
-#         up_dict = OrderedDict()
-#         # Downward layers
-#         for idx in range(n_layers):
-#             is_not_last_layer = idx != n_layers - 1
-#             in_dim = down_topo[idx]
-#             out_dim = down_topo[idx + 1] if is_not_last_layer else down_topo[idx]  # last layer
-#             layer = Down(in_dim, out_dim, DoubleConv)
-#             print(f'down{idx + 1}: in {in_dim}, out {out_dim}')
-#             down_dict[f'down{idx + 1}'] = layer
-#             up_topo.append(out_dim)
-#         self.down_seq = nn.ModuleDict(down_dict)
-#         # Upward layers
-#         for idx in reversed(range(n_layers)):
-#             is_not_last_layer = idx != 0
-#             x1_idx = idx
-#             x2_idx = idx - 1 if is_not_last_layer else idx
-#             in_dim = up_topo[x1_idx] * 2
-#             out_dim = up_topo[x2_idx]
-#             layer = Up(in_dim, out_dim, DoubleConv, attn_scheme=attn_scheme)
-#             print(f'up{idx + 1}: in {in_dim}, out {out_dim}')
-#             up_dict[f'up{idx + 1}'] = layer
-#         self.up_seq = nn.ModuleDict(up_dict)
-
-#     def encode(self, x1, x2=None, x3=None):
-#         if x2 is None and x3 is None:
-#             x = x1
-#         elif x3 is None:
-#             x = torch.cat((x1, x2), 1)
-#         else:
-#             x = torch.cat((x1, x2, x3), 1)
-
-#         x1 = self.inc(x)
-#         inputs = [x1]
-#         for layer in self.down_seq.values():
-#             out = layer(inputs[-1])
-#             inputs.append(out)
-
-#         inputs.reverse()            
-#         bottleneck = inputs[0]
-#         skips = inputs[1:]              
-#         return bottleneck, skips
-
-#     def decode(self, bottleneck, skips):
-#         x1 = bottleneck
-#         for idx, layer in enumerate(self.up_seq.values()):
-#             x2 = skips[idx]
-#             x1 = layer(x1, x2)
-
-#         return self.outc(x1) if self.enable_outc else x1
-
-#     def forward(self, x1, x2=None, x3=None):
-#         bottleneck, skips = self.encode(x1, x2, x3)
-#         return self.decode(bottleneck, skips)
-
 class UNet(nn.Module):
     def __init__(self, cfg, n_channels=None, n_classes=None, topology=None, enable_outc=True, attn_scheme=None):
-
         self._cfg = cfg
-
         n_channels = cfg.MODEL.IN_CHANNELS if n_channels is None else n_channels
         n_classes = cfg.MODEL.OUT_CHANNELS if n_classes is None else n_classes
         topology = cfg.MODEL.TOPOLOGY if topology is None else topology
-
         super(UNet, self).__init__()
-
         first_chan = topology[0]
         self.inc = InConv(n_channels, first_chan, DoubleConv)
         self.enable_outc = enable_outc
         self.outc = OutConv(first_chan, n_classes)
-
         # Variable scale
         down_topo = topology
         down_dict = OrderedDict()
         n_layers = len(down_topo)
         up_topo = [first_chan]  # topography upwards
         up_dict = OrderedDict()
-
         # Downward layers
         for idx in range(n_layers):
             is_not_last_layer = idx != n_layers - 1
             in_dim = down_topo[idx]
             out_dim = down_topo[idx + 1] if is_not_last_layer else down_topo[idx]  # last layer
-
             layer = Down(in_dim, out_dim, DoubleConv)
-
             print(f'down{idx + 1}: in {in_dim}, out {out_dim}')
             down_dict[f'down{idx + 1}'] = layer
             up_topo.append(out_dim)
         self.down_seq = nn.ModuleDict(down_dict)
-
         # Upward layers
         for idx in reversed(range(n_layers)):
             is_not_last_layer = idx != 0
@@ -253,40 +174,41 @@ class UNet(nn.Module):
             x2_idx = idx - 1 if is_not_last_layer else idx
             in_dim = up_topo[x1_idx] * 2
             out_dim = up_topo[x2_idx]
-
             layer = Up(in_dim, out_dim, DoubleConv, attn_scheme=attn_scheme)
-
             print(f'up{idx + 1}: in {in_dim}, out {out_dim}')
             up_dict[f'up{idx + 1}'] = layer
-
         self.up_seq = nn.ModuleDict(up_dict)
 
-    def forward(self, x1, x2=None, x3=None):
+    def encode(self, x1, x2=None, x3=None):
         if x2 is None and x3 is None:
             x = x1
         elif x3 is None:
             x = torch.cat((x1, x2), 1)
         else:
-            x = torch.cat((x1, x2, x3), 1)   
+            x = torch.cat((x1, x2, x3), 1)
 
         x1 = self.inc(x)
-
         inputs = [x1]
-        # Downward U:
         for layer in self.down_seq.values():
             out = layer(inputs[-1])
             inputs.append(out)
 
-        # Upward U:
-        inputs.reverse()
-        x1 = inputs.pop(0)
+        inputs.reverse()            
+        bottleneck = inputs[0]
+        skips = inputs[1:]              
+        return bottleneck, skips
+
+    def decode(self, bottleneck, skips):
+        x1 = bottleneck
         for idx, layer in enumerate(self.up_seq.values()):
-            x2 = inputs[idx]
-            x1 = layer(x1, x2) 
+            x2 = skips[idx]
+            x1 = layer(x1, x2)
 
-        out = self.outc(x1) if self.enable_outc else x1
+        return self.outc(x1) if self.enable_outc else x1
 
-        return out
+    def forward(self, x1, x2=None, x3=None):
+        bottleneck, skips = self.encode(x1, x2, x3)
+        return self.decode(bottleneck, skips)
 
 
 
