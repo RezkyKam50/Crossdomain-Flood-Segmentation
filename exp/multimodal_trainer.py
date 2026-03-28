@@ -96,7 +96,7 @@ def compute_gradnorm(model, running_grad_norm):
 
     return total_norm
 
-def train_model(model, loader, optimizer, criterion, epoch, device, accumulation_steps=None, writer=None, dtype=torch.float32):
+def train_model(model, loader, optimizer, criterion, epoch, device, accumulation_steps=2, writer=None, dtype=torch.float32):
     model.train()
     running_samples = 0
     running_grad_norm = 0.0
