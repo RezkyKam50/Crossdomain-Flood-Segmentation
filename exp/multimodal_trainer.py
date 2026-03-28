@@ -96,7 +96,7 @@ def compute_gradnorm(model, running_grad_norm):
 
     return total_norm
 
-def train_model(model, loader, optimizer, criterion, epoch, device, accumulation_steps=2, writer=None):
+def train_model(model, loader, optimizer, criterion, epoch, device, accumulation_steps=None, writer=None, dtype=torch.float32):
     model.train()
     running_samples = 0
     running_grad_norm = 0.0
@@ -116,7 +116,7 @@ def train_model(model, loader, optimizer, criterion, epoch, device, accumulation
         water_occur = water_occur.to(device, non_blocking=True)
         masks = masks.to(device, non_blocking=True)
               
-        with autocast(device_type="cuda", dtype=torch.bfloat16):
+        with autocast(device_type="cuda", dtype=dtype):
             outputs = model(sar_imgs, optical_imgs, elevation_imgs, water_occur)
            
             targets = masks.squeeze(1) if len(masks.shape) > 3 else masks
