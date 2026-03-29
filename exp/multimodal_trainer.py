@@ -96,7 +96,7 @@ def compute_gradnorm(model, running_grad_norm):
 
     return total_norm
 
-def train_model(model, loader, optimizer, criterion, epoch, device, accumulation_steps=None, writer=None, dtype=torch.float32):
+def train_model(model, loader, optimizer, criterion, epoch, device, accumulation_steps=2, writer=None, dtype=torch.bfloat16):
     model.train()
     running_samples = 0
     running_grad_norm = 0.0
@@ -399,7 +399,7 @@ def train(model, model_name, train_loader, valid_loader, test_loader, bolivia_lo
     elif args.loss_func == 'lovasz':
         criterion = LovaszLoss(mode='multiclass', per_image=False, from_logits=True, ignore_index=255)
     elif args.loss_func == 'tversky':
-        criterion = TverskyLoss(mode='multiclass', alpha=0.3, beta=0.7, gamma=1.33, eps=1e-7, ignore_index=255, from_logits=True)
+        criterion = TverskyLoss(mode='multiclass', alpha=0.3, beta=0.7, gamma=1, eps=1e-7, ignore_index=255, from_logits=True)
     elif args.loss_func == 'evaloss':
         criterion = ElevationLoss(use_tversky=False)
 
