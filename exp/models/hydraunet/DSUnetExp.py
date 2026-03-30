@@ -194,7 +194,7 @@ class UNet(nn.Module):
             inputs.append(out)
 
         inputs.reverse()            
-        bottleneck = inputs[0]
+        bottleneck = inputs[0] 
         skips = inputs[1:]              
         return bottleneck, skips
 
