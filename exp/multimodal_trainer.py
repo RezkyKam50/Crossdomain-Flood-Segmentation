@@ -399,7 +399,7 @@ def train(model, model_name, train_loader, valid_loader, test_loader, bolivia_lo
     elif args.loss_func == 'lovasz':
         criterion = LovaszLoss(mode='multiclass', per_image=False, from_logits=True, ignore_index=255)
     elif args.loss_func == 'tversky':
-        criterion = TverskyLoss(mode='multiclass', alpha=0.3, beta=0.7, gamma=0.75, eps=1e-7, ignore_index=255, from_logits=True)
+        criterion = TverskyLoss(mode='multiclass', alpha=0.3, beta=0.7, gamma=0.5, eps=1e-7, ignore_index=255, from_logits=True)
     elif args.loss_func == 'evaloss':
         criterion = ElevationLoss(use_tversky=False)
 
