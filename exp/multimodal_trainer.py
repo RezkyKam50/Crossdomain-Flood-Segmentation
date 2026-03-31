@@ -524,7 +524,7 @@ def main(args):
     
     logger.info("Loading datasets...")
 
-    seeds = [124]
+    seeds = [124, 12, 48, 4, 112]
     all_seed_results = []  
 
     for s in seeds:
