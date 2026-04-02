@@ -571,7 +571,7 @@ def main(args):
             #     fusion_scheme="late",
             #     bottleneck_dropout_prob=None
             # )
-            "DSUNet_NoAttn": DSUnetExp(
+            "DSUNet_NoAttnNoPrior": DSUnetExp(
                 cfg=Config_DSUnet,
                 use_prithvi=False,
                 skip_attn_scheme=None,
