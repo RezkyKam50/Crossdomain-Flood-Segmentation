@@ -58,6 +58,7 @@ class DSUnetExp(nn.Module):
             out_dim = 2 * cfg.MODEL.TOPOLOGY[0] # N channels x Topo First idx 
 
         self.out_conv = OutConv(out_dim, out)
+        self.out_conv_singular = OutConv(cfg.MODEL.TOPOLOGY[0], out)
 
         self.attn_channel = cfg.MODEL.TOPOLOGY[0]
 
@@ -114,30 +115,31 @@ class DSUnetExp(nn.Module):
         # print(f"JRC SH: {water_occur.shape}")
         # print(f"DEM SH: {dem_img.shape}")
         # s1_feature = torch.cat([dem_img, water_occur, s1_img], dim=1) # B, 1 + 1 + 2, H, W
-        s1_feature = self.s1_stream(s1_img)
+        # s1_feature = self.s1_stream(s1_img)
         s2_feature = self.s2_stream(s2_img)     
 
-        if self.sep_end_attn:
-            s1_feature = self.s1_feat(s1_feature)
-            s2_feature = self.s2_feat(s2_feature)
-        else:
-            s1_feature = self.feature_attn(s1_feature)
-            s2_feature = self.feature_attn(s2_feature)
+        # if self.sep_end_attn:
+        #     s1_feature = self.s1_feat(s1_feature)
+        #     s2_feature = self.s2_feat(s2_feature)
+        # else:
+        #     s1_feature = self.feature_attn(s1_feature)
+        #     s2_feature = self.feature_attn(s2_feature)
 
         # aux attention on S1 features
         # aux = torch.cat([dem_img, water_occur], dim=1)  # [B, 2, H, W]
         # s1_feature = self.aux_se(s1_feature, aux)                    # attended S1
         # s2_feature = self.s2_se(s2_feature, s1_feature)  
         
-        if self.use_prithvi:
-            prithvi_features = self.prithvi(s2_img)
-            fusion = torch.cat((s1_feature, s2_feature, prithvi_features), dim=1)
-        else:
-            fusion = torch.cat((s1_feature, s2_feature), dim=1)
+        # if self.use_prithvi:
+        #     prithvi_features = self.prithvi(s2_img)
+        #     fusion = torch.cat((s1_feature, s2_feature, prithvi_features), dim=1)
+        # else:
+        #     fusion = torch.cat((s1_feature, s2_feature), dim=1)
         
         # fusion = self.feature_attn(fusion)
 
-        out = self.out_conv(fusion)
+        # out = self.out_conv(fusion)
+        out = self.out_conv_singular(s2_feature)
         return out
 
 
