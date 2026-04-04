@@ -19,12 +19,12 @@ class DSUnetExp(nn.Module):
         out = cfg.MODEL.OUT_CHANNELS
         topology = cfg.MODEL.TOPOLOGY
 
-        # sentinel-1 unet stream
-        n_s1_bands = len(cfg.DATASET.SENTINEL1_BANDS)
-        s1_in = n_s1_bands 
-        # self.s1_stream = UNet(cfg, n_channels=s1_in + 2, n_classes=out, topology=topology, enable_outc=False, attn_scheme=skip_attn_scheme)
-        self.s1_stream = UNet(cfg, n_channels=s1_in , n_classes=out, topology=topology, enable_outc=False, attn_scheme=skip_attn_scheme)
-        self.n_s1_bands = n_s1_bands
+        # # sentinel-1 unet stream
+        # n_s1_bands = len(cfg.DATASET.SENTINEL1_BANDS)
+        # s1_in = n_s1_bands 
+        # # self.s1_stream = UNet(cfg, n_channels=s1_in + 2, n_classes=out, topology=topology, enable_outc=False, attn_scheme=skip_attn_scheme)
+        # self.s1_stream = UNet(cfg, n_channels=s1_in , n_classes=out, topology=topology, enable_outc=False, attn_scheme=skip_attn_scheme)
+        # self.n_s1_bands = n_s1_bands
 
         # sentinel-2 unet stream
         n_s2_bands = len(cfg.DATASET.SENTINEL2_BANDS)
@@ -32,15 +32,15 @@ class DSUnetExp(nn.Module):
         self.s2_stream = UNet(cfg, n_channels=s2_in, n_classes=out, topology=topology, enable_outc=False, attn_scheme=skip_attn_scheme)
         self.n_s2_bands = n_s2_bands
  
-        self.aux_se = CrossModalSqueezeExcite(
-            aux_chs=2,
-            s_chs=cfg.MODEL.TOPOLOGY[0]
-        )
+        # self.aux_se = CrossModalSqueezeExcite(
+        #     aux_chs=2,
+        #     s_chs=cfg.MODEL.TOPOLOGY[0]
+        # )
 
-        self.s2_se = CrossModalSqueezeExcite(
-            aux_chs=cfg.MODEL.TOPOLOGY[0],  # s1 attended as aux
-            s_chs=cfg.MODEL.TOPOLOGY[0]
-        ) 
+        # self.s2_se = CrossModalSqueezeExcite(
+        #     aux_chs=cfg.MODEL.TOPOLOGY[0],  # s1 attended as aux
+        #     s_chs=cfg.MODEL.TOPOLOGY[0]
+        # ) 
 
             
         # out block combining unet outputs
