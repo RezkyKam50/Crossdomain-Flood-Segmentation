@@ -571,10 +571,10 @@ def main(args):
             #     fusion_scheme="late",
             #     bottleneck_dropout_prob=None
             # )
-            "DSUNet_S2Only": DSUnetExp(
+            "DSUNet_NoSE": DSUnetExp(
                 cfg=Config_DSUnet,
                 use_prithvi=False,
-                skip_attn_scheme=None,
+                skip_attn_scheme="COORD",
                 end_attn_scheme=None,
                 sep_end_attn=False
             )
