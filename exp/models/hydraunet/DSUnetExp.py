@@ -114,7 +114,7 @@ class DSUnetExp(nn.Module):
         # print(f"JRC SH: {water_occur.shape}")
         # print(f"DEM SH: {dem_img.shape}")
         s1_feature = torch.cat([dem_img, water_occur, s1_img], dim=1) # B, 1 + 1 + 2, H, W
-        s1_feature = self.s1_stream(s1_img)
+        # s1_feature = self.s1_stream(s1_img)
         s2_feature = self.s2_stream(s2_img)     
 
         if self.sep_end_attn:
