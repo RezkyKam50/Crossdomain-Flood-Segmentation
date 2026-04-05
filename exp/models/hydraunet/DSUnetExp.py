@@ -90,24 +90,6 @@ class DSUnetExp(nn.Module):
     def change_prithvi_trainability(self, trainable):
         if self.use_prithvi:
             self.prithvi.change_prithvi_trainability(trainable)
-
-    # def forward(self, s1_img, s2_img, dem_img, water_occur): 
-
-    #     del water_occur # 6, 224, 224 # unsqueeze(1) > 6, 1, 224, 224 
-    #     del dem_img # 6, 1, 224, 224
-
-    #     s1_feature = self.s1_stream(s1_img)
-    #     s2_feature = self.s2_stream(s2_img)
- 
-    #     if self.use_prithvi:
-    #         prithvi_features = self.prithvi(s2_img)
-    #         fusion = torch.cat((s1_feature, s2_feature, prithvi_features), dim=1) # 2 ch + 2 ch prithvi
-    #     else:
-    #         fusion = torch.cat((s1_feature, s2_feature), dim=1) # 2 ch
-
-    #     out = self.out_conv(fusion)
-    #     return out
-
     
     def forward(self, s1_img, s2_img, dem_img=None, water_occur=None):
         
