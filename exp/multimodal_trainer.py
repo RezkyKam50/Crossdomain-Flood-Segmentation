@@ -10,6 +10,7 @@ from models.deeplab import DeepLabWrapper
 from models.hydraunet.UNet import UNet
 from models.hydraunet.UNetTP import UNet3Plus
 from models.hydraunet.DSUnetExp import DSUnetExp          # Dual Modality Classical UNet
+from models.hydraunet.EarlyFSClean import EarlyFusionUNet
 from models.hydraunet.DSUnet import DSUNet
 from models.transunet import TransUNet, TransUNetWrapper
 
@@ -571,12 +572,15 @@ def main(args):
             #     fusion_scheme="late",
             #     bottleneck_dropout_prob=None
             # )
-            "DSUNet_CoordEnd": DSUnetExp(
-                cfg=Config_DSUnet,
-                use_prithvi=False,
-                skip_attn_scheme=None,
-                end_attn_scheme="COORD",
-                sep_end_attn=False
+            # "DSUNet_CoordEnd": DSUnetExp(
+            #     cfg=Config_DSUnet,
+            #     use_prithvi=False,
+            #     skip_attn_scheme=None,
+            #     end_attn_scheme="COORD",
+            #     sep_end_attn=False
+            # )
+            "EarlyFS_S2DEMPW": EarlyFusionUNet(
+                cfg=Config_DSUnet
             )
         }
 
