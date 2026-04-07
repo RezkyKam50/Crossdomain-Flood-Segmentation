@@ -117,7 +117,7 @@ class DSUnetExp(nn.Module):
         else:
             fusion = torch.cat((s1_feature, s2_feature), dim=1)
         
-        fusion = self.feature_attn(fusion)
+        # fusion = self.feature_attn(fusion)
 
         out = self.out_conv(fusion)
         # out = self.out_conv_singular(s2_feature)
