@@ -128,8 +128,8 @@ class Up(nn.Module):
         self.up = nn.ConvTranspose2d(in_ch // 2, in_ch // 2, 2, stride=2)
         self.conv = conv_block(in_ch, out_ch)
 
-        self.attn_scheme = False
-        self.skip_attn = CoordAtt(in_ch // 2, in_ch // 2)
+        # self.attn_scheme = False
+        # self.skip_attn = CoordAtt(in_ch // 2, in_ch // 2)
 
     def forward(self, x1, x2):
         x1 = self.up(x1)
