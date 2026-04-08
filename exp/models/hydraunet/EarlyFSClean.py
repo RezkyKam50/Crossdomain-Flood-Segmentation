@@ -129,7 +129,7 @@ class Up(nn.Module):
         self.conv = conv_block(in_ch, out_ch)
 
         # self.attn_scheme = False
-        # self.skip_attn = CoordAtt(in_ch // 2, in_ch // 2)
+        self.skip_attn = CoordAtt(in_ch // 2, in_ch // 2)
 
     def forward(self, x1, x2):
         x1 = self.up(x1)
@@ -143,7 +143,7 @@ class Up(nn.Module):
         ])
 
         # if self.attn_scheme:
-        #     x2 = self.skip_attn(x2) 
+        x2 = self.skip_attn(x2) 
             
         x = torch.cat([x2, x1], dim=1)
         x = self.conv(x)

@@ -297,10 +297,10 @@ def ph_loop(model, train_loader, valid_loader, criterion, device, writer, schedu
             for metric_name, metric_value in val_metrics.items():
                 writer.add_scalar(f"{metric_name}/valid", metric_value, epoch)
 
-        if model_dir and (epoch + 1) % 50 == 0:
-            checkpoint_path = os.path.join(model_dir, f"checkpoint_epoch_{epoch+1}.pt")
-            torch.save(model.state_dict(), checkpoint_path)
-            logger.info(f"Checkpoint saved: {checkpoint_path}")
+        # if model_dir and (epoch + 1) % 50 == 0:
+        #     checkpoint_path = os.path.join(model_dir, f"checkpoint_epoch_{epoch+1}.pt")
+        #     torch.save(model.state_dict(), checkpoint_path)
+        #     logger.info(f"Checkpoint saved: {checkpoint_path}")
 
     phase_summary = {
         'mean_train_loss': float(np.mean(phase_metrics['train_losses'])),
@@ -579,7 +579,7 @@ def main(args):
             #     end_attn_scheme="COORD",
             #     sep_end_attn=False
             # )
-            "EarlyFS_S2DEMPW": EarlyFusionUNet(
+            "EarlyFS_S2DEMPW_Coord": EarlyFusionUNet(
                 cfg=Config_DSUnet
             )
         }
