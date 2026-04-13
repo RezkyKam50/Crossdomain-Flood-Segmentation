@@ -15,13 +15,13 @@ class EarlyFusionUNet(nn.Module):
         topology = cfg.MODEL.TOPOLOGY
 
         self.unet = UNet(
-            n_channels=n_s2_bands + 2,
+            n_channels=n_s2_bands + 2 + 2,
             n_classes=out,
             topology=topology,
         )
 
     def forward(self, s1_img=None, s2_img=None, dem=None, pw=None):
-        fused_input = torch.cat([s2_img, dem, pw], dim=1)
+        fused_input = torch.cat([s1_img ,s2_img, dem, pw], dim=1)
         return self.unet(fused_input)
 
 
