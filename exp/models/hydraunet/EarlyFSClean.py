@@ -21,7 +21,7 @@ class EarlyFusionUNet(nn.Module):
         )
 
     def forward(self, s1_img=None, s2_img=None, dem=None, pw=None):
-        fused_input = torch.cat([s1_img ,s2_img, dem, pw], dim=1)
+        fused_input = torch.cat([s2_img, dem, pw], dim=1)
         return self.unet(fused_input)
 
 

@@ -579,7 +579,11 @@ def main(args):
             #     end_attn_scheme="COORD",
             #     sep_end_attn=False
             # )
+<<<<<<< HEAD
             "EarlyFS_S1S2DEMPW_Coord": EarlyFusionUNet(
+=======
+            "EarlyFS_S1S2DEMPW_Coord_e2e": EarlyFusionUNet(
+>>>>>>> 895f70d90b0d9dc714133006c39289d091d67b8a
                 cfg=Config_DSUnet
             )
         }
