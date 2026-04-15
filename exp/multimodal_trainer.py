@@ -428,7 +428,7 @@ def train(model, model_name, train_loader, valid_loader, test_loader, bolivia_lo
     #     model.change_s1_trainability(False) # Freeze S1, update S2
     #     model.change_s2_trainability(True)
     #     logger.info(f"Module S1 frozen. Trainable parameters: {get_number_of_trainable_parameters(model):,}")
-    num_params_phase_2 = ph_loop(model, train_loader, valid_loader, criterion, device, writer, scheduler, optimizer, model_dir, args)
+    # num_params_phase_2 = ph_loop(model, train_loader, valid_loader, criterion, device, writer, scheduler, optimizer, model_dir, args)
     # torch.cuda.empty_cache()
 
     # FT Phase 3
@@ -437,7 +437,7 @@ def train(model, model_name, train_loader, valid_loader, test_loader, bolivia_lo
     #     model.change_s2_trainability(True)
     #     # model.change_prithvi_trainability(True) # Unfreeze Prithvi
     #     logger.info(f"All weights unfrozen. Trainable parameters: {get_number_of_trainable_parameters(model):,}")
-    num_params_phase_ft = ft_loop(model, model_name, train_loader, valid_loader, criterion, device, writer, scheduler, optimizer, args)
+    # num_params_phase_ft = ft_loop(model, model_name, train_loader, valid_loader, criterion, device, writer, scheduler, optimizer, args)
             #model, model_name, train_loader, valid_loader, criterion, device, writer, scheduler, optimizer, args
 
 
