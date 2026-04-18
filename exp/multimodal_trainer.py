@@ -97,7 +97,7 @@ def compute_gradnorm(model, running_grad_norm):
 
     return total_norm
 
-def train_model(model, loader, optimizer, criterion, epoch, device, accumulation_steps=2, writer=None, dtype=torch.bfloat16):
+def train_model(model, loader, optimizer, criterion, epoch, device, accumulation_steps=2, writer=None, drop=None ,dtype=torch.bfloat16):
     model.train()
     running_samples = 0
     running_grad_norm = 0.0
@@ -118,7 +118,7 @@ def train_model(model, loader, optimizer, criterion, epoch, device, accumulation
         masks = masks.to(device, non_blocking=True)
               
         with autocast(device_type="cuda", dtype=dtype):
-            outputs = model(sar_imgs, optical_imgs, elevation_imgs, water_occur)
+            outputs = model(sar_imgs, optical_imgs, elevation_imgs, water_occur, drop=drop)
            
             targets = masks.squeeze(1) if len(masks.shape) > 3 else masks
             if isinstance(criterion, ElevationLoss):
@@ -267,7 +267,7 @@ def ph_loop(model, train_loader, valid_loader, criterion, device, writer, schedu
         logger.info(f"\nEpoch {epoch+1}/{args.epochs}")
         
         train_loss, train_acc, train_iou, std_loss, std_acc, std_iou = train_model(
-            model, train_loader, optimizer, criterion, epoch, device, writer=writer
+            model, train_loader, optimizer, criterion, epoch, device, writer=writer, drop="drop_main"
         )
         logger.info(f"Train - Loss: {train_loss:.4f} (±{std_loss:.4f}), Accuracy: {train_acc:.4f} (±{std_acc:.4f}), IoU: {train_iou:.4f} (±{std_iou:.4f})")
         
@@ -335,7 +335,7 @@ def ft_loop(model, model_name, train_loader, valid_loader, criterion, device, wr
         for epoch in range(args.epochs, args.epochs + finetune_epochs):
             logger.info(f"\n{model_name} - Fine-tune Epoch {epoch+1}/{args.epochs + finetune_epochs}")
              
-            train_loss, train_acc, train_iou, std_loss, std_acc, std_iou = train_model(model, train_loader, optimizer, criterion, epoch, device, writer=writer)
+            train_loss, train_acc, train_iou, std_loss, std_acc, std_iou = train_model(model, train_loader, optimizer, criterion, epoch, device, writer=writer, drop="drop_comp")
             logger.info(f"Train - Loss: {train_loss:.4f} (±{std_loss:.4f}), Accuracy: {train_acc:.4f} (±{std_acc:.4f}), IoU: {train_iou:.4f} (±{std_iou:.4f})")
             
             writer.add_scalar("Loss/train", train_loss, epoch)

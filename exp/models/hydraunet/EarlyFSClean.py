@@ -20,10 +20,22 @@ class EarlyFusionUNet(nn.Module):
             topology=topology,
         )
 
-    def forward(self, s1_img=None, s2_img=None, dem=None, pw=None):
-        fused_input = torch.cat([s1_img ,s2_img, dem, pw], dim=1)
+
+    def forward(self, s1_img=None, s2_img=None, dem=None, pw=None, drop="drop_main"):
+        complementary = torch.cat([s1_img, dem, pw], dim=1)
+        main = s2_img
+
+        if drop == "drop_main":
+            main = torch.zeros_like(main)
+        elif drop == "drop_comp":
+            complementary = torch.zeros_like(complementary)
+
+        fused_input = torch.cat([complementary, main], dim=1)
         return self.unet(fused_input)
 
+
+# 1: torch zeros1
+# 2: dropout
 
 class UNet(nn.Module):
 
