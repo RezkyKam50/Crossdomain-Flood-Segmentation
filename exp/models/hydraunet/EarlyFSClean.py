@@ -21,15 +21,9 @@ class EarlyFusionUNet(nn.Module):
         )
 
 
-    def forward(self, s1_img=None, s2_img=None, dem=None, pw=None, drop="drop_main"):
+    def forward(self, s1_img=None, s2_img=None, dem=None, pw=None):
         complementary = torch.cat([s1_img, dem, pw], dim=1)
         main = s2_img
-
-        if drop == "drop_main":
-            main = torch.zeros_like(main)
-        elif drop == "drop_comp":
-            complementary = torch.zeros_like(complementary)
-
         fused_input = torch.cat([complementary, main], dim=1)
         return self.unet(fused_input)
 
