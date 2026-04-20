@@ -19,7 +19,7 @@ class DSUNetLateFS(nn.Module):
         self.s2_stream = UNet(cfg, n_channels=n_s2_bands, n_classes=out,
                               topology=topology, enable_outc=False, weak=False)
 
-        fusion_dim = topology[0] + 2
+        fusion_dim = topology[0] 
         self.s1_proj = nn.Conv2d(s1_topology[0], fusion_dim, kernel_size=1)
         self.out_conv = OutConv(fusion_dim, out)
 
