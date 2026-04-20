@@ -10,9 +10,13 @@ from models.deeplab import DeepLabWrapper
 from models.hydraunet.UNet import UNet
 from models.hydraunet.UNetTP import UNet3Plus
 from models.hydraunet.DSUnetExp import DSUnetExp          # Dual Modality Classical UNet
+from models.hydraunet.MidFS_Clean import DSUNetMidFS
 from models.hydraunet.EarlyFSClean import EarlyFusionUNet
+from models.hydraunet.LateFS_Clean import DSUNetLateFS
+
 from models.hydraunet.DSUnet import DSUNet
 from models.transunet import TransUNet, TransUNetWrapper
+
 
 
 from models.hydraunet.config import (
@@ -579,9 +583,15 @@ def main(args):
             #     end_attn_scheme="COORD",
             #     sep_end_attn=False
             # )
-            "EarlyFS_S1S2DEMPW_NoAttn": EarlyFusionUNet(
+            # "EarlyFS_S1S2DEMPW_NoAttn": EarlyFusionUNet(
+            #     cfg=Config_DSUnet
+            # ),
+            "LateFS_WeakStrong_1x1_3x3_WeakTopology": DSUNetLateFS(
                 cfg=Config_DSUnet
-            )
+            ),
+            # "MidFS_WeakStrong_1x1_3x3_SameTopology": DSUNetMidFS(
+            #     cfg=Config_DSUnet
+            # )
         }
 
         seed_results = []
