@@ -20,16 +20,15 @@ class DSUNetLateFS(nn.Module):
                               topology=topology, enable_outc=False, weak=False)
 
         fusion_dim = topology[0] 
-        self.s1_proj = nn.Conv2d(s1_topology[0], fusion_dim, kernel_size=1)
         self.out_conv = OutConv(fusion_dim, out)
 
     def forward(self, s1_img, s2_img, dem, pw):
         s1_feature = torch.cat([s1_img, dem, pw], dim=1)
         s1_feature = self.s1_stream(s1_feature)
-        s1_feature = self.s1_proj(s1_feature)
         s2_feature = self.s2_stream(s2_img)             
 
-        fusion = s1_feature + s2_feature  # element-wise add
+        fusion = torch.cat([s1_feature, s2_feature], dim=1)
+        
         return self.out_conv(fusion)
 
 class UNet(nn.Module):
