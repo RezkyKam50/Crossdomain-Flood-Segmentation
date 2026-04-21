@@ -19,16 +19,17 @@ class DSUNetLateFS(nn.Module):
         self.s2_stream = UNet(cfg, n_channels=n_s2_bands, n_classes=out,
                               topology=topology, enable_outc=False, weak=False)
 
-        fusion_dim = topology[0] 
+        fusion_dim = topology[0] + s1_topology[0]
+
         self.out_conv = OutConv(fusion_dim, out)
 
     def forward(self, s1_img, s2_img, dem, pw):
         s1_feature = torch.cat([s1_img, dem, pw], dim=1)
-        s1_feature = self.s1_stream(s1_feature)
-        s2_feature = self.s2_stream(s2_img)             
+        s1_feature = self.s1_stream(s1_feature) # 4 ch
+        s2_feature = self.s2_stream(s2_img) # 6 ch  
 
         fusion = torch.cat([s1_feature, s2_feature], dim=1)
-        
+
         return self.out_conv(fusion)
 
 class UNet(nn.Module):
