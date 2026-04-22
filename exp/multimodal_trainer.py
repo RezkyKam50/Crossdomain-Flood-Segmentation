@@ -441,7 +441,7 @@ def train(model, model_name, train_loader, valid_loader, test_loader, bolivia_lo
     #     model.change_s2_trainability(True)
     #     # model.change_prithvi_trainability(True) # Unfreeze Prithvi
     #     logger.info(f"All weights unfrozen. Trainable parameters: {get_number_of_trainable_parameters(model):,}")
-    num_params_phase_ft = ft_loop(model, model_name, train_loader, valid_loader, criterion, device, writer, scheduler, optimizer, args)
+    # num_params_phase_ft = ft_loop(model, model_name, train_loader, valid_loader, criterion, device, writer, scheduler, optimizer, args)
         #model, model_name, train_loader, valid_loader, criterion, device, writer, scheduler, optimizer, args
 
 
@@ -586,12 +586,12 @@ def main(args):
             # "EarlyFS_S1S2DEMPW_NoAttn": EarlyFusionUNet(
             #     cfg=Config_DSUnet
             # ),
-            "LateFS_WeakStrong_1x1_3x3_WeakTopology_Concat": DSUNetLateFS(
-                cfg=Config_DSUnet
-            ),
-            # "MidFS_WeakStrong_1x1_3x3_SameTopology": DSUNetMidFS(
+            # "LateFS_WeakStrong_1x1_3x3_WeakTopology_Concat": DSUNetLateFS(
             #     cfg=Config_DSUnet
-            # )
+            # ),
+            "MidFS_WeakStrong_1x1_3x3_SameTopology": DSUNetMidFS(
+                cfg=Config_DSUnet
+            )
         }
 
         seed_results = []
