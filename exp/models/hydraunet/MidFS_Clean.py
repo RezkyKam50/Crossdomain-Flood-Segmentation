@@ -6,7 +6,7 @@ import torch.nn as nn
 
 class DSUNetMidFS(nn.Module):
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, fusion="cat"):
         super(DSUNetMidFS, self).__init__()
         self._cfg = cfg
 
@@ -22,7 +22,10 @@ class DSUNetMidFS(nn.Module):
                               topology=topology, enable_outc=False, weak=False)
 
         bottleneck_dim = topology[-1]
-        self.middle_fusion_proj = nn.Conv2d(bottleneck_dim * 2, bottleneck_dim, kernel_size=1)
+
+        self.fusion = fusion
+        if fusion == "cat":
+            self.middle_fusion_proj = nn.Conv2d(bottleneck_dim * 2, bottleneck_dim, kernel_size=1)
         self.out_conv = OutConv(2 * topology[0], out)
 
     def forward(self, s1_img, s2_img, dem, pw):
@@ -33,9 +36,12 @@ class DSUNetMidFS(nn.Module):
         s1_skips = self.s1_stream.encode(s1)
         s2_skips = self.s2_stream.encode(s2)
 
-        fused_bottleneck = self.middle_fusion_proj(
-            torch.cat([s1_skips[-1], s2_skips[-1]], dim=1)
-        )
+        if self.fusion == "cat":
+            fused_bottleneck = self.middle_fusion_proj(
+                torch.cat([s1_skips[-1], s2_skips[-1]], dim=1)
+            )
+        elif self.fusion == "add":
+            fused_bottleneck = s1_skips[-1] + s2_skips[-1]
 
         s1_skips[-1] = fused_bottleneck
         s2_skips[-1] = fused_bottleneck

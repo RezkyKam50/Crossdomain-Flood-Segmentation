@@ -590,7 +590,8 @@ def main(args):
             #     cfg=Config_DSUnet
             # ),
             "MidFS_WeakStrong_1x1_3x3_SameTopology": DSUNetMidFS(
-                cfg=Config_DSUnet
+                cfg=Config_DSUnet,
+                fusion="add"
             )
         }
 
