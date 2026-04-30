@@ -4,6 +4,42 @@ import torch
 import torch.nn as nn
 
 
+# class GCA(nn.Module):
+#     def __init__(self, cloud_prone_channel=0):
+#         super(GCA, self).__init__()
+
+#     def forward(self, s2_img):
+
+#         s2_subset = s2_img[:, 0:2, :, :]   # shape: (6, 2, 224, 224)
+
+
+class ChannelAttention(nn.Module):
+    def __init__(self, in_planes, ratio=4):
+        super(ChannelAttention, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
+
+        self.sharedMLP = nn.Sequential(
+            nn.Conv2d(in_planes, in_planes // ratio, 1, bias=False), 
+            nn.ReLU(),
+            nn.Conv2d(in_planes // ratio, in_planes, 1, bias=False))
+        self.sigmoid = nn.Sigmoid()
+        
+        self._init_weights()
+
+    def _init_weights(self):
+        for m in self.sharedMLP.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+        last_conv = self.sharedMLP[-1]  
+        nn.init.normal_(last_conv.weight, mean=0.0, std=0.001)
+
+    def forward(self, x):
+        avgout = self.sharedMLP(self.avg_pool(x))
+        maxout = self.sharedMLP(self.max_pool(x))
+        return self.sigmoid(avgout + maxout)
+
+
 class DSUNetMidFS(nn.Module):
 
     def __init__(self, cfg, fusion="cat"):
@@ -20,6 +56,9 @@ class DSUNetMidFS(nn.Module):
         
         self.s2_stream = UNet(cfg, n_channels=n_s2_bands, n_classes=out,
                               topology=topology, enable_outc=False, weak=False)
+        
+        self.channel_attn = ChannelAttention(in_planes=n_s2_bands, ratio=2)
+        self.attn_alpha = nn.Parameter(torch.zeros(1, n_s2_bands, 1, 1))
 
         bottleneck_dim = topology[-1]
 
@@ -30,8 +69,11 @@ class DSUNetMidFS(nn.Module):
 
     def forward(self, s1_img, s2_img, dem, pw):
 
+        # s2_img (Sentinel-2): Channel idx: (1, 2, 3, 8, 11, 12) shape (6, 6, 224, 224)
         s1 = torch.cat([s1_img, dem, pw], dim=1)
-        s2 = s2_img
+
+        attn_weights = self.channel_attn(s2_img)  # (B, 6, H, W)
+        s2 = s2_img + self.attn_alpha * (attn_weights * s2_img)
 
         s1_skips = self.s1_stream.encode(s1)
         s2_skips = self.s2_stream.encode(s2)

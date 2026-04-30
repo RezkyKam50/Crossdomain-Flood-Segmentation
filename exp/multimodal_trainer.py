@@ -586,13 +586,13 @@ def main(args):
             # "EarlyFS_S1S2DEMPW_NoAttn": EarlyFusionUNet(
             #     cfg=Config_DSUnet
             # ),
-            "LateFS_WeakStrong_1x1_3x3_WeakTopology_Concat": DSUNetLateFS(
-                cfg=Config_DSUnet
-            ),
-            # "MidFS_WeakStrong_1x1_3x3_SameTopology": DSUNetMidFS(
-            #     cfg=Config_DSUnet,
-            #     fusion="add"
-            # )
+            # "LateFS_WeakStrong_1x1_3x3_WeakTopology_Concat": DSUNetLateFS(
+            #     cfg=Config_DSUnet
+            # ),
+            "MidFS_WeakStrong_1x1_3x3_SameTopology": DSUNetMidFS(
+                cfg=Config_DSUnet,
+                fusion="cat"
+            )
         }
 
         seed_results = []
