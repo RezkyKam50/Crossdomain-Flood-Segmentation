@@ -18,20 +18,18 @@ class ChannelAttention(nn.Module):
         super(ChannelAttention, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
-
         self.sharedMLP = nn.Sequential(
-            nn.Conv2d(in_planes, in_planes // ratio, 1, bias=False), 
+            nn.Conv2d(in_planes, in_planes // ratio, 1, bias=False),
             nn.ReLU(),
             nn.Conv2d(in_planes // ratio, in_planes, 1, bias=False))
         self.sigmoid = nn.Sigmoid()
-        
         self._init_weights()
 
     def _init_weights(self):
         for m in self.sharedMLP.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-        last_conv = self.sharedMLP[-1]  
+        last_conv = self.sharedMLP[-1]
         nn.init.normal_(last_conv.weight, mean=0.0, std=0.001)
 
     def forward(self, x):
@@ -53,31 +51,48 @@ class DSUNetMidFS(nn.Module):
 
         self.s1_stream = UNet(cfg, n_channels=n_s1_bands + 2, n_classes=out,
                               topology=topology, enable_outc=False, weak=True)
-        
         self.s2_stream = UNet(cfg, n_channels=n_s2_bands, n_classes=out,
                               topology=topology, enable_outc=False, weak=False)
-        
-        self.channel_attn = ChannelAttention(in_planes=n_s2_bands, ratio=2)
-        self.attn_alpha = nn.Parameter(torch.zeros(1, n_s2_bands, 1, 1))
+
+        # --- Per-skip channel attention + alpha for S2 stream ---
+        # Skip dims: [topology[0], topology[0], topology[1], ..., topology[-1]]
+        # inc output + each down output = [topology[0]] + list(topology)
+        skip_dims = [topology[0]] + list(topology)  # e.g. [32, 32, 64, 128, 256]
+
+        self.s2_skip_attn = nn.ModuleList([
+            ChannelAttention(in_planes=dim, ratio=max(2, dim // 16))
+            for dim in skip_dims
+        ])
+        self.s2_skip_alpha = nn.ParameterList([
+            nn.Parameter(torch.zeros(1, dim, 1, 1))
+            for dim in skip_dims
+        ])
 
         bottleneck_dim = topology[-1]
-
         self.fusion = fusion
         if fusion == "cat":
             self.middle_fusion_proj = nn.Conv2d(bottleneck_dim * 2, bottleneck_dim, kernel_size=1)
         self.out_conv = OutConv(2 * topology[0], out)
 
-    def forward(self, s1_img, s2_img, dem, pw):
+    def _apply_skip_attn(self, skips, attn_modules, alphas):
+        """Apply channel attention + residual alpha scaling to each skip."""
+        attended = []
+        for feat, attn, alpha in zip(skips, attn_modules, alphas):
+            weights = attn(feat)                          # (B, C, 1, 1)
+            attended.append(feat + alpha * (weights * feat))
+        return attended
 
-        # s2_img (Sentinel-2): Channel idx: (1, 2, 3, 8, 11, 12) shape (6, 6, 224, 224)
+    def forward(self, s1_img, s2_img, dem, pw):
         s1 = torch.cat([s1_img, dem, pw], dim=1)
 
-        attn_weights = self.channel_attn(s2_img)  # (B, 6, H, W)
-        s2 = s2_img + self.attn_alpha * (attn_weights * s2_img)
+        # Encode both streams
+        s1_skips = self.s1_stream.encode(s1)   # list of (B, C, H, W) per level
+        s2_skips = self.s2_stream.encode(s2_img)
 
-        s1_skips = self.s1_stream.encode(s1)
-        s2_skips = self.s2_stream.encode(s2)
+        # Apply per-skip attention on S2 skips
+        s2_skips = self._apply_skip_attn(s2_skips, self.s2_skip_attn, self.s2_skip_alpha)
 
+        # Bottleneck fusion
         if self.fusion == "cat":
             fused_bottleneck = self.middle_fusion_proj(
                 torch.cat([s1_skips[-1], s2_skips[-1]], dim=1)
