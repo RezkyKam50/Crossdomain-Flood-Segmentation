@@ -57,8 +57,15 @@ class DSUNetMidFS(nn.Module):
         # --- Per-skip channel attention + alpha for S2 stream ---
         # Skip dims: [topology[0], topology[0], topology[1], ..., topology[-1]]
         # inc output + each down output = [topology[0]] + list(topology)
-        skip_dims = [topology[0]] + list(topology)  # e.g. [32, 32, 64, 128, 256]
 
+        n_layers = len(topology)
+        skip_dims = [topology[0]]
+        for idx in range(n_layers):
+            is_not_last_layer = idx != n_layers - 1
+            out_dim = topology[idx + 1] if is_not_last_layer else topology[idx]
+            skip_dims.append(out_dim)
+
+            
         self.s2_skip_attn = nn.ModuleList([
             ChannelAttention(in_planes=dim, ratio=max(2, dim // 16))
             for dim in skip_dims
