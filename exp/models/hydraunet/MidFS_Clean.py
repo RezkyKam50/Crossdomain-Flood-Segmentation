@@ -18,18 +18,20 @@ class ChannelAttention(nn.Module):
         super(ChannelAttention, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
+
         self.sharedMLP = nn.Sequential(
-            nn.Conv2d(in_planes, in_planes // ratio, 1, bias=False),
+            nn.Conv2d(in_planes, in_planes // ratio, 1, bias=False), 
             nn.ReLU(),
             nn.Conv2d(in_planes // ratio, in_planes, 1, bias=False))
         self.sigmoid = nn.Sigmoid()
+        
         self._init_weights()
 
     def _init_weights(self):
         for m in self.sharedMLP.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-        last_conv = self.sharedMLP[-1]
+        last_conv = self.sharedMLP[-1]  
         nn.init.normal_(last_conv.weight, mean=0.0, std=0.001)
 
     def forward(self, x):
@@ -37,10 +39,31 @@ class ChannelAttention(nn.Module):
         maxout = self.sharedMLP(self.max_pool(x))
         return self.sigmoid(avgout + maxout)
 
+class CloudGatedFusion(nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+        self.s2_channel_attn = ChannelAttention(in_planes=dim, ratio=4)
+        
+        self.gate = nn.Sequential(
+            nn.Conv2d(dim * 2, dim, 1),
+            nn.Sigmoid()
+        )
+        self.proj = nn.Conv2d(dim * 2, dim, 1)
+
+    def forward(self, s1_feat, s2_feat):
+ 
+        s2_attn = self.s2_channel_attn(s2_feat)    
+        s2_feat = s2_feat * s2_attn                
+ 
+        combined = torch.cat([s1_feat, s2_feat], dim=1)
+        s2_weight = self.gate(combined)            
+ 
+        fused = self.proj(torch.cat([s1_feat, s2_weight * s2_feat], dim=1))
+        return fused + s1_feat                     
 
 class DSUNetMidFS(nn.Module):
 
-    def __init__(self, cfg, fusion="cat"):
+    def __init__(self, cfg):
         super(DSUNetMidFS, self).__init__()
         self._cfg = cfg
 
@@ -51,61 +74,35 @@ class DSUNetMidFS(nn.Module):
 
         self.s1_stream = UNet(cfg, n_channels=n_s1_bands + 2, n_classes=out,
                               topology=topology, enable_outc=False, weak=True)
+        
         self.s2_stream = UNet(cfg, n_channels=n_s2_bands, n_classes=out,
                               topology=topology, enable_outc=False, weak=False)
-
-        # --- Per-skip channel attention + alpha for S2 stream ---
-        # Skip dims: [topology[0], topology[0], topology[1], ..., topology[-1]]
-        # inc output + each down output = [topology[0]] + list(topology)
-
-        n_layers = len(topology)
-        skip_dims = [topology[0]]
-        for idx in range(n_layers):
-            is_not_last_layer = idx != n_layers - 1
-            out_dim = topology[idx + 1] if is_not_last_layer else topology[idx]
-            skip_dims.append(out_dim)
-
-            
-        self.s2_skip_attn = nn.ModuleList([
-            ChannelAttention(in_planes=dim, ratio=max(2, dim // 16))
-            for dim in skip_dims
-        ])
-        self.s2_skip_alpha = nn.ParameterList([
-            nn.Parameter(torch.zeros(1, dim, 1, 1))
-            for dim in skip_dims
-        ])
+        
+        self.channel_attn = ChannelAttention(in_planes=n_s2_bands, ratio=2)
+        self.attn_alpha = nn.Parameter(torch.zeros(1, n_s2_bands, 1, 1))
 
         bottleneck_dim = topology[-1]
-        self.fusion = fusion
-        if fusion == "cat":
-            self.middle_fusion_proj = nn.Conv2d(bottleneck_dim * 2, bottleneck_dim, kernel_size=1)
+        self.middle_fusion = CloudGatedFusion(bottleneck_dim)
+
+        # self.middle_fusion_proj = nn.Conv2d(bottleneck_dim * 2, bottleneck_dim, kernel_size=1)
         self.out_conv = OutConv(2 * topology[0], out)
 
-    def _apply_skip_attn(self, skips, attn_modules, alphas):
-        """Apply channel attention + residual alpha scaling to each skip."""
-        attended = []
-        for feat, attn, alpha in zip(skips, attn_modules, alphas):
-            weights = attn(feat)                          # (B, C, 1, 1)
-            attended.append(feat + alpha * (weights * feat))
-        return attended
-
     def forward(self, s1_img, s2_img, dem, pw):
+
+        # s2_img (Sentinel-2): Channel idx: (1, 2, 3, 8, 11, 12) shape (6, 6, 224, 224)
         s1 = torch.cat([s1_img, dem, pw], dim=1)
 
-        # Encode both streams
-        s1_skips = self.s1_stream.encode(s1)   # list of (B, C, H, W) per level
-        s2_skips = self.s2_stream.encode(s2_img)
+        attn_weights = self.channel_attn(s2_img)  # (B, 6, H, W)
+        s2 = s2_img + self.attn_alpha * (attn_weights * s2_img)
 
-        # Apply per-skip attention on S2 skips
-        s2_skips = self._apply_skip_attn(s2_skips, self.s2_skip_attn, self.s2_skip_alpha)
-
-        # Bottleneck fusion
-        if self.fusion == "cat":
-            fused_bottleneck = self.middle_fusion_proj(
-                torch.cat([s1_skips[-1], s2_skips[-1]], dim=1)
-            )
-        elif self.fusion == "add":
-            fused_bottleneck = s1_skips[-1] + s2_skips[-1]
+        s1_skips = self.s1_stream.encode(s1)
+        s2_skips = self.s2_stream.encode(s2)
+ 
+        # fused_bottleneck = self.middle_fusion_proj(
+        #     torch.cat([s1_skips[-1], s2_skips[-1]], dim=1)
+        # )
+ 
+        fused_bottleneck = self.middle_fusion(s1_skips[-1], s2_skips[-1])
 
         s1_skips[-1] = fused_bottleneck
         s2_skips[-1] = fused_bottleneck
@@ -191,18 +188,15 @@ class DoubleConv(nn.Module):
 
 class WeakDoubleConv(nn.Module):
     def __init__(self, in_ch, out_ch):
-        super(WeakDoubleConv, self).__init__()
+        super().__init__()
         self.conv = nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, 1),
+            nn.Conv2d(in_ch, out_ch, 3, padding=1),  
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True),
-            nn.Conv2d(out_ch, out_ch, 1),
+            nn.Conv2d(out_ch, out_ch, 3, padding=1, groups=out_ch), 
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True)
         )
-
-    def forward(self, x):
-        return self.conv(x)
 
 
 class InConv(nn.Module):
