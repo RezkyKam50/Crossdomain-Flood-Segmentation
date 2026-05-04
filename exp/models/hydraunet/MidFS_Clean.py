@@ -197,6 +197,9 @@ class WeakDoubleConv(nn.Module):
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True)
         )
+        
+    def forward(self, x):
+        return self.conv(x)
 
 
 class InConv(nn.Module):
