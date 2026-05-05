@@ -90,7 +90,7 @@ class DSUNetMidFS(nn.Module):
 
         # s2_img (Sentinel-2): Channel idx: (1, 2, 3, 8, 11, 12) shape (6, 6, 224, 224)
         s1 = torch.cat([s1_img, dem, pw], dim=1)
-        
+
         s2_attn = self.channel_attn(s2_img)
         s2 = s2_img * s2_attn  
 
@@ -189,10 +189,7 @@ class WeakDoubleConv(nn.Module):
     def __init__(self, in_ch, out_ch):
         super().__init__()
         self.conv = nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, 3, padding=1),  
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(out_ch, out_ch, 3, padding=1, groups=out_ch), 
+            nn.Conv2d(in_ch, out_ch, 1),  
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True)
         )
