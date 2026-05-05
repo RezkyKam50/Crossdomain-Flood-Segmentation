@@ -79,7 +79,6 @@ class DSUNetMidFS(nn.Module):
                               topology=topology, enable_outc=False, weak=False)
         
         self.channel_attn = ChannelAttention(in_planes=n_s2_bands, ratio=2)
-        self.attn_alpha = nn.Parameter(torch.zeros(1, n_s2_bands, 1, 1))
 
         bottleneck_dim = topology[-1]
         self.middle_fusion = CloudGatedFusion(bottleneck_dim)
@@ -92,8 +91,7 @@ class DSUNetMidFS(nn.Module):
         # s2_img (Sentinel-2): Channel idx: (1, 2, 3, 8, 11, 12) shape (6, 6, 224, 224)
         s1 = torch.cat([s1_img, dem, pw], dim=1)
 
-        attn_weights = self.channel_attn(s2_img)  # (B, 6, H, W)
-        s2 = s2_img + self.attn_alpha * (attn_weights * s2_img)
+        s2 = self.channel_attn(s2_img)  # (B, 6, H, W)
 
         s1_skips = self.s1_stream.encode(s1)
         s2_skips = self.s2_stream.encode(s2)
