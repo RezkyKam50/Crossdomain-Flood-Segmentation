@@ -42,7 +42,7 @@ class ChannelAttention(nn.Module):
 class CloudGatedFusion(nn.Module):
     def __init__(self, dim):
         super().__init__()
-        self.s2_channel_attn = ChannelAttention(in_planes=dim, ratio=4)
+        self.s2_channel_attn = ChannelAttention(in_planes=dim, ratio=8)
         
         self.gate = nn.Sequential(
             nn.Conv2d(dim * 2, dim, 1),
@@ -78,7 +78,7 @@ class DSUNetMidFS(nn.Module):
         self.s2_stream = UNet(cfg, n_channels=n_s2_bands, n_classes=out,
                               topology=topology, enable_outc=False, weak=False)
         
-        self.channel_attn = ChannelAttention(in_planes=n_s2_bands, ratio=2)
+        self.channel_attn = ChannelAttention(in_planes=n_s2_bands, ratio=1)
 
         bottleneck_dim = topology[-1]
         self.middle_fusion = CloudGatedFusion(bottleneck_dim)
@@ -90,8 +90,9 @@ class DSUNetMidFS(nn.Module):
 
         # s2_img (Sentinel-2): Channel idx: (1, 2, 3, 8, 11, 12) shape (6, 6, 224, 224)
         s1 = torch.cat([s1_img, dem, pw], dim=1)
-
-        s2 = self.channel_attn(s2_img)  # (B, 6, H, W)
+        
+        s2_attn = self.channel_attn(s2_img)
+        s2 = s2_img * s2_attn  
 
         s1_skips = self.s1_stream.encode(s1)
         s2_skips = self.s2_stream.encode(s2)
