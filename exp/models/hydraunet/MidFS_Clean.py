@@ -92,7 +92,7 @@ class DSUNetMidFS(nn.Module):
         s1 = torch.cat([s1_img, dem, pw], dim=1)
 
         s2_attn = self.channel_attn(s2_img)
-        s2 = s2_img * s2_attn  
+        s2 = s2_img + s2_attn  
 
         s1_skips = self.s1_stream.encode(s1)
         s2_skips = self.s2_stream.encode(s2)
