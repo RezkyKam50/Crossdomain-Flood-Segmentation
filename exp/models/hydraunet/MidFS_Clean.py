@@ -39,11 +39,28 @@ class ChannelAttention(nn.Module):
         maxout = self.sharedMLP(self.max_pool(x))
         return self.sigmoid(avgout + maxout)
 
+class SpatialAttention(nn.Module):
+    def __init__(self, kernel_size=7):
+        super(SpatialAttention, self).__init__()
+        assert kernel_size in (3, 7), "kernel size must be 3 or 7"
+        padding = 3 if kernel_size == 7 else 1
+
+        self.conv = nn.Conv2d(2, 1, kernel_size, padding=padding, bias=False)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        avgout = torch.mean(x, dim=1, keepdim=True)
+        maxout, _ = torch.max(x, dim=1, keepdim=True)
+        x = torch.cat([avgout, maxout], dim=1)
+        x = self.conv(x)
+        return self.sigmoid(x)
+
 class CloudGatedFusion(nn.Module):
     def __init__(self, dim):
         super().__init__()
         self.s2_channel_attn = ChannelAttention(in_planes=dim, ratio=8)
-        
+        self.s2_spatial_attn = SpatialAttention(kernel_size=7) 
+
         self.gate = nn.Sequential(
             nn.Conv2d(dim * 2, dim, 1),
             nn.Sigmoid()
@@ -54,11 +71,13 @@ class CloudGatedFusion(nn.Module):
  
         s2_attn = self.s2_channel_attn(s2_feat)    
         s2_feat = s2_feat * s2_attn                
- 
+        s2_feat = s2_feat * self.s2_spatial_attn(s2_feat)
+
         combined = torch.cat([s1_feat, s2_feat], dim=1)
         s2_weight = self.gate(combined)            
  
         fused = self.proj(torch.cat([s1_feat, s2_weight * s2_feat], dim=1))
+        
         return fused + s1_feat                     
 
 class DSUNetMidFS(nn.Module):
@@ -79,6 +98,7 @@ class DSUNetMidFS(nn.Module):
                               topology=topology, enable_outc=False, weak=False)
         
         self.channel_attn = ChannelAttention(in_planes=n_s2_bands, ratio=1)
+        self.spatial_attn = SpatialAttention(kernel_size=7)
 
         bottleneck_dim = topology[-1]
         self.middle_fusion = CloudGatedFusion(bottleneck_dim)
@@ -92,7 +112,8 @@ class DSUNetMidFS(nn.Module):
         s1 = torch.cat([s1_img, dem, pw], dim=1)
 
         s2_attn = self.channel_attn(s2_img)
-        s2 = s2_img + s2_attn  
+        s2 = s2_img * s2_attn  
+        s2 = s2 * self.spatial_attn(s2) 
 
         s1_skips = self.s1_stream.encode(s1)
         s2_skips = self.s2_stream.encode(s2)
