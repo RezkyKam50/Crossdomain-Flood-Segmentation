@@ -98,7 +98,6 @@ class DSUNetMidFS(nn.Module):
                               topology=topology, enable_outc=False, weak=False)
         
         self.channel_attn = ChannelAttention(in_planes=n_s2_bands, ratio=1)
-        self.spatial_attn = SpatialAttention(kernel_size=7)
 
         bottleneck_dim = topology[-1]
         self.middle_fusion = CloudGatedFusion(bottleneck_dim)
@@ -113,7 +112,6 @@ class DSUNetMidFS(nn.Module):
 
         s2_attn = self.channel_attn(s2_img)
         s2 = s2_img * s2_attn  
-        s2 = s2 * self.spatial_attn(s2) 
 
         s1_skips = self.s1_stream.encode(s1)
         s2_skips = self.s2_stream.encode(s2)
