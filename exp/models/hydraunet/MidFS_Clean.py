@@ -80,8 +80,30 @@ class CloudGatedFusion(nn.Module):
         
         return fused + s1_feat                     
 
-class DSUNetMidFS(nn.Module):
 
+class CloudMask(nn.Module):
+    def __init__(self, brightness_thresh=0.3, sharpness=10.0):
+        super().__init__()
+        # Learnable threshold and sharpness so the model can adapt
+        self.threshold = nn.Parameter(torch.tensor(brightness_thresh))
+        self.sharpness = nn.Parameter(torch.tensor(sharpness))
+
+    def forward(self, s2_img):
+        visible = s2_img[:, 0:3, :, :]  
+ 
+        brightness = visible.mean(dim=1, keepdim=True)       
+ 
+        std = visible.std(dim=1, keepdim=True).detach()       
+        flatness = 1.0 - std.clamp(0, 1)            
+ 
+        cloud_score = brightness * flatness               
+ 
+        cloud_prob = torch.sigmoid(self.sharpness * (cloud_score - self.threshold))
+        clear_mask = 1.0 - cloud_prob             
+        return clear_mask   
+
+
+class DSUNetMidFS(nn.Module):
     def __init__(self, cfg):
         super(DSUNetMidFS, self).__init__()
         self._cfg = cfg
@@ -93,33 +115,30 @@ class DSUNetMidFS(nn.Module):
 
         self.s1_stream = UNet(cfg, n_channels=n_s1_bands + 2, n_classes=out,
                               topology=topology, enable_outc=False, weak=True)
-        
         self.s2_stream = UNet(cfg, n_channels=n_s2_bands, n_classes=out,
                               topology=topology, enable_outc=False, weak=False)
-        
+
         self.channel_attn = ChannelAttention(in_planes=n_s2_bands, ratio=1)
+ 
+        self.cloud_mask = CloudMask(brightness_thresh=0.3, sharpness=10.0)
 
         bottleneck_dim = topology[-1]
         self.middle_fusion = CloudGatedFusion(bottleneck_dim)
-
-        # self.middle_fusion_proj = nn.Conv2d(bottleneck_dim * 2, bottleneck_dim, kernel_size=1)
         self.out_conv = OutConv(2 * topology[0], out)
 
     def forward(self, s1_img, s2_img, dem, pw):
-
-        # s2_img (Sentinel-2): Channel idx: (1, 2, 3, 8, 11, 12) shape (6, 6, 224, 224)
         s1 = torch.cat([s1_img, dem, pw], dim=1)
+ 
+        clear_mask = self.cloud_mask(s2_img)         
 
-        s2_attn = self.channel_attn(s2_img)
-        s2 = s2_img * s2_attn  
+        s2_masked = s2_img.clone()
+        s2_masked[:, 0:3, :, :] = s2_img[:, 0:3, :, :] * clear_mask  
+        s2_attn = self.channel_attn(s2_masked)
+        s2 = s2_masked * s2_attn
 
         s1_skips = self.s1_stream.encode(s1)
         s2_skips = self.s2_stream.encode(s2)
- 
-        # fused_bottleneck = self.middle_fusion_proj(
-        #     torch.cat([s1_skips[-1], s2_skips[-1]], dim=1)
-        # )
- 
+
         fused_bottleneck = self.middle_fusion(s1_skips[-1], s2_skips[-1])
 
         s1_skips[-1] = fused_bottleneck
