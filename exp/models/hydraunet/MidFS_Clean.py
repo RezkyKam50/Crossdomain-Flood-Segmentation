@@ -44,8 +44,7 @@ class CloudGatedFusion(nn.Module):
     def forward(self, s1_feat, s2_feat):
  
         s2_attn = self.s2_channel_attn(s2_feat)    
-        s2_feat = s2_feat * s2_attn                
-        s2_feat = s2_feat * self.s2_spatial_attn(s2_feat)
+        s2_feat = s2_feat * s2_attn               
 
         combined = torch.cat([s1_feat, s2_feat], dim=1)
         s2_weight = self.gate(combined)            
