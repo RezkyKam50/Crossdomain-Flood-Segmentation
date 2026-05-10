@@ -589,7 +589,7 @@ def main(args):
             # "LateFS_WeakStrong_1x1_3x3_WeakTopology_Concat": DSUNetLateFS(
             #     cfg=Config_DSUnet
             # ),
-            "MidFS_WeakStrong_1x1_3x3_SameTopology_GCABottleneck": DSUNetMidFS(
+            "MidFS_WeakStrong_1x1_3x3_SameTopology_GCA_AllSkip_TanhGate": DSUNetMidFS(
                 cfg=Config_DSUnet
             )
         }
