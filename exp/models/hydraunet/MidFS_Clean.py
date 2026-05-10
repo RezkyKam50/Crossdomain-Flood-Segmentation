@@ -70,7 +70,13 @@ class DSUNetMidFS(nn.Module):
                               topology=topology, enable_outc=False, weak=False)
     
         # bottleneck_dim = topology[-1]
-        skip_dims = [topology[0]] + list(topology[:-1]) + [topology[-1]]
+        # topology = [16 ,32, 64, 128, 256, 512, 1024]
+        n_layers = len(topology)
+        skip_dims = [topology[0]]  # inc output
+        for idx in range(n_layers):
+            is_not_last_layer = idx != n_layers - 1
+            out_dim = topology[idx + 1] if is_not_last_layer else topology[idx]
+            skip_dims.append(out_dim)
 
         self.skip_fusions = nn.ModuleList([
             CloudGatedFusion(dim) for dim in skip_dims
