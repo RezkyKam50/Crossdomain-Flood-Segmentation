@@ -5,7 +5,7 @@ import torch.nn as nn
 
 
 class ChannelAttention(nn.Module):
-    def __init__(self, in_planes, ratio=4):
+    def __init__(self, in_planes, ratio=None):
         super(ChannelAttention, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
@@ -33,11 +33,11 @@ class ChannelAttention(nn.Module):
 class CloudGatedFusion(nn.Module):
     def __init__(self, dim):
         super().__init__()
-        self.s2_channel_attn = ChannelAttention(in_planes=dim, ratio=8)
+        self.s2_channel_attn = ChannelAttention(in_planes=dim, ratio=2)
 
         self.gate = nn.Sequential(
             nn.Conv2d(dim * 2, dim, 1),
-            nn.Tanh()
+            nn.Sigmoid()
         )
         self.proj = nn.Conv2d(dim * 2, dim, 1)
 
