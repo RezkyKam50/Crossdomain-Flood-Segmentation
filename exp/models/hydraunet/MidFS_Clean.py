@@ -16,42 +16,11 @@ class ChannelAttention(nn.Module):
             nn.Conv2d(in_planes // ratio, in_planes, 1, bias=False))
         self.sigmoid = nn.Sigmoid()
         
-    #     self._init_weights()
-
-    # def _init_weights(self):
-    #     for m in self.sharedMLP.modules():
-    #         if isinstance(m, nn.Conv2d):
-    #             nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-    #     last_conv = self.sharedMLP[-1]  
-    #     nn.init.normal_(last_conv.weight, mean=0.0, std=0.001)
-
     def forward(self, x):
         avgout = self.sharedMLP(self.avg_pool(x))
         maxout = self.sharedMLP(self.max_pool(x))
+
         return self.sigmoid(avgout + maxout)
-
-class CloudGatedFusion(nn.Module):
-    def __init__(self, dim):
-        super().__init__()
-        self.s2_channel_attn = ChannelAttention(in_planes=dim, ratio=2)
-
-        self.gate = nn.Sequential(
-            nn.Conv2d(dim * 2, dim, 1),
-            nn.Sigmoid()
-        )
-        self.proj = nn.Conv2d(dim * 2, dim, 1)
-
-    def forward(self, s1_feat, s2_feat):
- 
-        s2_attn = self.s2_channel_attn(s2_feat)    
-        s2_feat = s2_feat * s2_attn               
-
-        combined = torch.cat([s1_feat, s2_feat], dim=1)
-        s2_weight = self.gate(combined)            
- 
-        fused = self.proj(torch.cat([s1_feat, s2_weight * s2_feat], dim=1))
-        
-        return fused + s1_feat                     
 
 class DSUNetMidFS(nn.Module):
     def __init__(self, cfg):
@@ -79,9 +48,10 @@ class DSUNetMidFS(nn.Module):
             skip_dims.append(out_dim)
 
         self.skip_fusions = nn.ModuleList([
-            CloudGatedFusion(dim) for dim in skip_dims
+            ChannelAttention(dim) for dim in skip_dims
         ])
         self.out_conv = OutConv(2 * topology[0], out)
+
 
     def forward(self, s1_img, s2_img, dem, pw):
         s1 = torch.cat([s1_img, dem, pw], dim=1)
@@ -97,7 +67,6 @@ class DSUNetMidFS(nn.Module):
         s2_feature = self.s2_stream.decode(s2_skips)
 
         return self.out_conv(torch.cat([s1_feature, s2_feature], dim=1))
-
 
 class UNet(nn.Module):
 
