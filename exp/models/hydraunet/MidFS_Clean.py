@@ -38,8 +38,6 @@ class DSUNetMidFS(nn.Module):
         self.s2_stream = UNet(cfg, n_channels=n_s2_bands, n_classes=out,
                               topology=topology, enable_outc=False, weak=False)
     
-        # bottleneck_dim = topology[-1]
-        # topology = [16 ,32, 64, 128, 256, 512, 1024]
         n_layers = len(topology)
         skip_dims = [topology[0]]  # inc output
         for idx in range(n_layers):
@@ -59,9 +57,13 @@ class DSUNetMidFS(nn.Module):
         s2_skips = self.s2_stream.encode(s2_img)
 
         for i in range(len(s1_skips)):
-            fused = self.skip_fusions[i](s1_skips[i], s2_skips[i])
-            s1_skips[i] = fused
-            s2_skips[i] = fused
+            # Element-wise sum of skip features from both streams
+            fused_input = s1_skips[i] + s2_skips[i]
+            # Compute channel attention weights from the fused input
+            attn = self.skip_fusions[i](fused_input)
+            # Apply attention to the fused input for both streams
+            s1_skips[i] = fused_input * attn
+            s2_skips[i] = fused_input * attn
 
         s1_feature = self.s1_stream.decode(s1_skips)
         s2_feature = self.s2_stream.decode(s2_skips)
