@@ -48,7 +48,7 @@ class DSUNetMidFS(nn.Module):
             skip_dims.append(out_dim)
 
         self.skip_fusions = nn.ModuleList([
-            ChannelAttention(dim) for dim in skip_dims
+            ChannelAttention(dim, 4) for dim in skip_dims
         ])
         self.out_conv = OutConv(2 * topology[0], out)
 
