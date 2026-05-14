@@ -11,16 +11,29 @@ class ChannelAttention(nn.Module):
         self.max_pool = nn.AdaptiveMaxPool2d(1)
 
         self.sharedMLP = nn.Sequential(
-            nn.Conv2d(in_planes, in_planes // ratio, 1, bias=False), 
+            nn.Conv2d(in_planes, in_planes // ratio, 1, bias=False),
             nn.ReLU(),
             nn.Conv2d(in_planes // ratio, in_planes, 1, bias=False))
         self.sigmoid = nn.Sigmoid()
-        
+
     def forward(self, x):
         avgout = self.sharedMLP(self.avg_pool(x))
         maxout = self.sharedMLP(self.max_pool(x))
-
         return self.sigmoid(avgout + maxout)
+
+
+class FusionProjection(nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+        self.proj = nn.Sequential(
+            nn.Conv2d(dim * 2, dim, 1, bias=False),
+            nn.BatchNorm2d(dim),
+            nn.ReLU(inplace=True),
+        )
+
+    def forward(self, x1, x2):
+        return self.proj(torch.cat([x1, x2], dim=1))
+
 
 class DSUNetMidFS(nn.Module):
     def __init__(self, cfg):
@@ -34,22 +47,29 @@ class DSUNetMidFS(nn.Module):
 
         self.s1_stream = UNet(cfg, n_channels=n_s1_bands + 2, n_classes=out,
                               topology=topology, enable_outc=False, weak=True)
-        
+
         self.s2_stream = UNet(cfg, n_channels=n_s2_bands, n_classes=out,
                               topology=topology, enable_outc=False, weak=False)
-    
+
         n_layers = len(topology)
-        skip_dims = [topology[0]]  # inc output
+        skip_dims = [topology[0]]   
         for idx in range(n_layers):
             is_not_last_layer = idx != n_layers - 1
             out_dim = topology[idx + 1] if is_not_last_layer else topology[idx]
             skip_dims.append(out_dim)
-
+ 
         self.skip_fusions = nn.ModuleList([
+            FusionProjection(dim) for dim in skip_dims
+        ])
+ 
+        self.s1_attns = nn.ModuleList([
             ChannelAttention(dim, 4) for dim in skip_dims
         ])
-        self.out_conv = OutConv(2 * topology[0], out)
+        self.s2_attns = nn.ModuleList([
+            ChannelAttention(dim, 4) for dim in skip_dims
+        ])
 
+        self.out_conv = OutConv(2 * topology[0], out)
 
     def forward(self, s1_img, s2_img, dem, pw):
         s1 = torch.cat([s1_img, dem, pw], dim=1)
@@ -57,18 +77,17 @@ class DSUNetMidFS(nn.Module):
         s2_skips = self.s2_stream.encode(s2_img)
 
         for i in range(len(s1_skips)):
-            # Element-wise sum of skip features from both streams
-            fused_input = s1_skips[i] + s2_skips[i]
-            # Compute channel attention weights from the fused input
-            attn = self.skip_fusions[i](fused_input)
-            # Apply attention to the fused input for both streams
-            s1_skips[i] = fused_input * attn
-            s2_skips[i] = fused_input * attn
+ 
+            fused = self.skip_fusions[i](s1_skips[i], s2_skips[i])
+ 
+            s1_skips[i] = s1_skips[i] * self.s1_attns[i](fused)
+            s2_skips[i] = s2_skips[i] * self.s2_attns[i](fused)
 
         s1_feature = self.s1_stream.decode(s1_skips)
         s2_feature = self.s2_stream.decode(s2_skips)
 
         return self.out_conv(torch.cat([s1_feature, s2_feature], dim=1))
+
 
 class UNet(nn.Module):
 
@@ -141,17 +160,17 @@ class DoubleConv(nn.Module):
 
     def forward(self, x):
         return self.conv(x)
-    
+
 
 class WeakDoubleConv(nn.Module):
     def __init__(self, in_ch, out_ch):
         super().__init__()
         self.conv = nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, 1),  
+            nn.Conv2d(in_ch, out_ch, 1),
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True)
         )
-        
+
     def forward(self, x):
         return self.conv(x)
 
