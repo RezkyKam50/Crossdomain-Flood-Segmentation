@@ -34,9 +34,9 @@ class FusionProjection(nn.Module):
         return self.proj(torch.cat([x1, x2], dim=1))
 
 
-class DSUNetBottleneckFS(nn.Module):
+class DSUNetMidFS(nn.Module):
     def __init__(self, cfg):
-        super(DSUNetBottleneckFS, self).__init__()
+        super(DSUNetMidFS, self).__init__()
         self._cfg = cfg
 
         out = cfg.MODEL.OUT_CHANNELS
