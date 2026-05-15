@@ -14,12 +14,11 @@ class ChannelAttention(nn.Module):
             nn.Conv2d(in_planes, in_planes // ratio, 1, bias=False),
             nn.ReLU(),
             nn.Conv2d(in_planes // ratio, in_planes, 1, bias=False))
-        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         avgout = self.sharedMLP(self.avg_pool(x))
         maxout = self.sharedMLP(self.max_pool(x))
-        return self.sigmoid(avgout + maxout)
+        return F.softmax(avgout + maxout, dim=1)
 
 
 class FusionProjection(nn.Module):
@@ -35,9 +34,9 @@ class FusionProjection(nn.Module):
         return self.proj(torch.cat([x1, x2], dim=1))
 
 
-class DSUNetMidFS(nn.Module):
+class DSUNetBottleneckFS(nn.Module):
     def __init__(self, cfg):
-        super(DSUNetMidFS, self).__init__()
+        super(DSUNetBottleneckFS, self).__init__()
         self._cfg = cfg
 
         out = cfg.MODEL.OUT_CHANNELS
@@ -51,23 +50,12 @@ class DSUNetMidFS(nn.Module):
         self.s2_stream = UNet(cfg, n_channels=n_s2_bands, n_classes=out,
                               topology=topology, enable_outc=False, weak=False)
 
-        n_layers = len(topology)
-        skip_dims = [topology[0]]   
-        for idx in range(n_layers):
-            is_not_last_layer = idx != n_layers - 1
-            out_dim = topology[idx + 1] if is_not_last_layer else topology[idx]
-            skip_dims.append(out_dim)
- 
-        self.skip_fusions = nn.ModuleList([
-            FusionProjection(dim) for dim in skip_dims
-        ])
- 
-        self.s1_attns = nn.ModuleList([
-            ChannelAttention(dim, 4) for dim in skip_dims
-        ])
-        self.s2_attns = nn.ModuleList([
-            ChannelAttention(dim, 4) for dim in skip_dims
-        ])
+        # Bottleneck dim is the last topology value
+        bottleneck_dim = topology[-1]
+
+        self.bottleneck_fusion = FusionProjection(bottleneck_dim)
+        self.s1_attn = ChannelAttention(bottleneck_dim, 4)
+        self.s2_attn = ChannelAttention(bottleneck_dim, 4)
 
         self.out_conv = OutConv(2 * topology[0], out)
 
@@ -76,12 +64,10 @@ class DSUNetMidFS(nn.Module):
         s1_skips = self.s1_stream.encode(s1)
         s2_skips = self.s2_stream.encode(s2_img)
 
-        for i in range(len(s1_skips)):
- 
-            fused = self.skip_fusions[i](s1_skips[i], s2_skips[i])
- 
-            s1_skips[i] = s1_skips[i] * self.s1_attns[i](fused)
-            s2_skips[i] = s2_skips[i] * self.s2_attns[i](fused)
+        # Only fuse at the bottleneck (last element of skips)
+        fused = self.bottleneck_fusion(s1_skips[-1], s2_skips[-1])
+        s1_skips[-1] = s1_skips[-1] * self.s1_attn(fused)
+        s2_skips[-1] = s2_skips[-1] * self.s2_attn(fused)
 
         s1_feature = self.s1_stream.decode(s1_skips)
         s2_feature = self.s2_stream.decode(s2_skips)
