@@ -23,6 +23,7 @@ class ChannelAttention(nn.Module):
 class ModalityGate(nn.Module):
     def __init__(self, feature_dim):
         super().__init__()
+        self.feature_dim = feature_dim
         # Learn spatial weights for each modality
         self.gate = nn.Sequential(
             nn.Conv2d(feature_dim * 2, feature_dim * 2, 1),
@@ -31,6 +32,8 @@ class ModalityGate(nn.Module):
             nn.Conv2d(feature_dim * 2, 2, 1),  # 2 channels: S1_gate, S2_gate
             nn.Softmax(dim=1)  # Competition between modalities
         )
+        # Add projection to match output channels
+        self.proj = nn.Conv2d(feature_dim, feature_dim * 2, 1)
     
     def forward(self, s1_feat, s2_feat):
         combined = torch.cat([s1_feat, s2_feat], dim=1)
@@ -40,7 +43,9 @@ class ModalityGate(nn.Module):
         s1_gate = gates[:, 0:1, :, :]  # [B, 1, H, W]
         s2_gate = gates[:, 1:2, :, :]  # [B, 1, H, W]
         
-        return s1_feat * s1_gate + s2_feat * s2_gate
+        # Apply gates and concatenate
+        gated = s1_feat * s1_gate + s2_feat * s2_gate  # [B, feature_dim, H, W]
+        return self.proj(gated)  # [B, feature_dim * 2, H, W]
 
 class FusionProjection(nn.Module):
     def __init__(self, dim):
@@ -77,7 +82,7 @@ class DSUNetMidFS(nn.Module):
         self.bottleneck_fusion = FusionProjection(bottleneck_dim)
         self.s1_attn = ChannelAttention(bottleneck_dim, 4)
         self.s2_attn = ChannelAttention(bottleneck_dim, 4)
-        self.modality_gate = ModalityGate(topology[0] * 2)
+        self.modality_gate = ModalityGate(topology[0])
 
         self.out_conv = OutConv(2 * topology[0], out)
 
