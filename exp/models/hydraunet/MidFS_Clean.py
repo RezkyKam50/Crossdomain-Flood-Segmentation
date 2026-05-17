@@ -77,7 +77,7 @@ class DSUNetMidFS(nn.Module):
         self.bottleneck_fusion = FusionProjection(bottleneck_dim)
         self.s1_attn = ChannelAttention(bottleneck_dim, 4)
         self.s2_attn = ChannelAttention(bottleneck_dim, 4)
-        self.modality_gate = ModalityGate(topology[0])
+        self.modality_gate = ModalityGate(topology[0] * 2)
 
         self.out_conv = OutConv(2 * topology[0], out)
 
