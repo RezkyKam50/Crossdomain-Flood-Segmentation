@@ -20,6 +20,27 @@ class ChannelAttention(nn.Module):
         maxout = self.sharedMLP(self.max_pool(x))
         return F.softmax(avgout + maxout, dim=1)
 
+class ModalityGate(nn.Module):
+    def __init__(self, feature_dim):
+        super().__init__()
+        # Learn spatial weights for each modality
+        self.gate = nn.Sequential(
+            nn.Conv2d(feature_dim * 2, feature_dim * 2, 1),
+            nn.BatchNorm2d(feature_dim * 2),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(feature_dim * 2, 2, 1),  # 2 channels: S1_gate, S2_gate
+            nn.Softmax(dim=1)  # Competition between modalities
+        )
+    
+    def forward(self, s1_feat, s2_feat):
+        combined = torch.cat([s1_feat, s2_feat], dim=1)
+        gates = self.gate(combined)  # [B, 2, H, W]
+        
+        # Split gates and apply
+        s1_gate = gates[:, 0:1, :, :]  # [B, 1, H, W]
+        s2_gate = gates[:, 1:2, :, :]  # [B, 1, H, W]
+        
+        return s1_feat * s1_gate + s2_feat * s2_gate
 
 class FusionProjection(nn.Module):
     def __init__(self, dim):
@@ -56,6 +77,7 @@ class DSUNetMidFS(nn.Module):
         self.bottleneck_fusion = FusionProjection(bottleneck_dim)
         self.s1_attn = ChannelAttention(bottleneck_dim, 4)
         self.s2_attn = ChannelAttention(bottleneck_dim, 4)
+        self.modality_gate = ModalityGate(topology[0])
 
         self.out_conv = OutConv(2 * topology[0], out)
 
@@ -72,7 +94,11 @@ class DSUNetMidFS(nn.Module):
         s1_feature = self.s1_stream.decode(s1_skips)
         s2_feature = self.s2_stream.decode(s2_skips)
 
-        return self.out_conv(torch.cat([s1_feature, s2_feature], dim=1))
+        # combined = torch.cat([s1_feature, s2_feature], dim=1)
+
+        combined = self.modality_gate(s1_feature, s2_feature)
+
+        return self.out_conv(combined)
 
 
 class UNet(nn.Module):
@@ -86,7 +112,7 @@ class UNet(nn.Module):
         topology = cfg.MODEL.TOPOLOGY if topology is None else topology
 
         first_chan = topology[0]
-        self.inc = InConv(n_channels, first_chan, DoubleConv if not weak else WeakDoubleConv)
+        self.inc = InConv(n_channels, first_chan, ConvBlock if not weak else WeakConvBlock)
         self.enable_outc = enable_outc
         self.outc = OutConv(first_chan, n_classes)
 
@@ -100,7 +126,7 @@ class UNet(nn.Module):
             is_not_last_layer = idx != n_layers - 1
             in_dim = down_topo[idx]
             out_dim = down_topo[idx + 1] if is_not_last_layer else down_topo[idx]
-            down_dict[f'down{idx + 1}'] = Down(in_dim, out_dim, DoubleConv if not weak else WeakDoubleConv)
+            down_dict[f'down{idx + 1}'] = Down(in_dim, out_dim, ConvBlock if not weak else WeakConvBlock)
             up_topo.append(out_dim)
         self.down_seq = nn.ModuleDict(down_dict)
 
@@ -110,7 +136,7 @@ class UNet(nn.Module):
             x2_idx = idx - 1 if is_not_last_layer else idx
             in_dim = up_topo[x1_idx] * 2
             out_dim = up_topo[x2_idx]
-            up_dict[f'up{idx + 1}'] = Up(in_dim, out_dim, DoubleConv if not weak else WeakDoubleConv)
+            up_dict[f'up{idx + 1}'] = Up(in_dim, out_dim, ConvBlock if not weak else WeakConvBlock)
         self.up_seq = nn.ModuleDict(up_dict)
 
     def encode(self, x):
@@ -132,14 +158,11 @@ class UNet(nn.Module):
         return self.decode(self.encode(x))
 
 
-class DoubleConv(nn.Module):
+class ConvBlock(nn.Module):
     def __init__(self, in_ch, out_ch):
-        super(DoubleConv, self).__init__()
+        super(ConvBlock, self).__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(in_ch, out_ch, 3, padding=1),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(out_ch, out_ch, 3, padding=1),
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True)
         )
@@ -148,7 +171,7 @@ class DoubleConv(nn.Module):
         return self.conv(x)
 
 
-class WeakDoubleConv(nn.Module):
+class WeakConvBlock(nn.Module):
     def __init__(self, in_ch, out_ch):
         super().__init__()
         self.conv = nn.Sequential(
