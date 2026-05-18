@@ -197,7 +197,7 @@ class ConvBlock(nn.Module):
         )
 
         self.drop_path = DropPath(p, inplace=False) if p > 0 else nn.Identity()
-        self.shortcut = nn.Conv2d(in_ch, out_ch, 1) if in_ch != out_ch else nn.Identity()
+        self.shortcut = nn.Conv2d(in_ch, out_ch, 1) 
 
     def forward(self, x):
         residual = self.shortcut(x)
