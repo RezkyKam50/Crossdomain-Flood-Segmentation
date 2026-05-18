@@ -106,6 +106,10 @@ class DSUNetMidFS(nn.Module):
         self.bottleneck_fusion = FusionProjection(bottleneck_dim)
         self.s1_attn = ChannelAttention(bottleneck_dim, 4)
         self.s2_attn = ChannelAttention(bottleneck_dim, 4)
+
+        self.dp_s1 = DropPath(0.5, False)
+        self.dp_s2 = DropPath(0.5, False)
+
         self.modality_gate = ModalityGate(topology[0])
 
         self.out_conv = OutConv(2 * topology[0], out)
@@ -119,6 +123,8 @@ class DSUNetMidFS(nn.Module):
         fused = self.bottleneck_fusion(s1_skips[-1], s2_skips[-1])
         s1_skips[-1] = s1_skips[-1] * self.s1_attn(fused)
         s2_skips[-1] = s2_skips[-1] * self.s2_attn(fused)
+        s1_skips[-1] = self.dp_s1(s1_skips[-1])
+        s2_skips[-1] = self.dp_s2(s2_skips[-1])
 
         s1_feature = self.s1_stream.decode(s1_skips)
         s2_feature = self.s2_stream.decode(s2_skips)
@@ -188,21 +194,15 @@ class UNet(nn.Module):
 
 
 class ConvBlock(nn.Module):
-    def __init__(self, in_ch, out_ch, p=0.5):
+    def __init__(self, in_ch, out_ch):
         super().__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(in_ch, out_ch, 3, padding=1),
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True)
         )
-
-        self.drop_path = DropPath(p, inplace=False) if p > 0 else nn.Identity()
-        self.shortcut = nn.Conv2d(in_ch, out_ch, 1) 
-
     def forward(self, x):
-        residual = self.shortcut(x)
         out = self.conv(x)
-        out = out + self.drop_path(residual)
         return out
 
 
