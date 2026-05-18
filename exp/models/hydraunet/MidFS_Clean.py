@@ -5,6 +5,18 @@ import torch.nn as nn
 from torch import Tensor
 from typing import Tuple
 
+
+def drop_path(self, x: Tensor, keep_prob: float = 1.0, inplace: bool = False) -> Tensor:
+    mask_shape: Tuple[int] = (x.shape[0],) + (1,) * (x.ndim - 1) 
+    # remember tuples have the * operator -> (1,) * 3 = (1,1,1)
+    mask: Tensor = x.new_empty(mask_shape).bernoulli_(keep_prob)
+    mask.div_(keep_prob)
+    if inplace:
+        x.mul_(mask)
+    else:
+        x = x * mask
+    return x
+
 class DropPath(nn.Module):
     ''' Stochastic Dropout  (Gao Huang et al) applied to modules with residual connection'''
     def __init__(self, p: float = 0.5, inplace: bool = False):
@@ -12,20 +24,9 @@ class DropPath(nn.Module):
         self.p = p
         self.inplace = inplace
 
-    def drop_path(self, x: Tensor, keep_prob: float = 1.0, inplace: bool = False) -> Tensor:
-        mask_shape: Tuple[int] = (x.shape[0],) + (1,) * (x.ndim - 1) 
-        # remember tuples have the * operator -> (1,) * 3 = (1,1,1)
-        mask: Tensor = x.new_empty(mask_shape).bernoulli_(keep_prob)
-        mask.div_(keep_prob)
-        if inplace:
-            x.mul_(mask)
-        else:
-            x = x * mask
-        return x
-
     def forward(self, x: Tensor) -> Tensor:
         if self.training and self.p > 0:
-            x = self.drop_path(x, self.p, self.inplace)
+            x = drop_path(x, self.p, self.inplace)
         return x
 
     def __repr__(self):
@@ -194,21 +195,19 @@ class ConvBlock(nn.Module):
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True)
         )
-        self.act = nn.ReLU(inplace=True)
+
         self.drop_path = DropPath(p, inplace=False) if p > 0 else nn.Identity()
         self.shortcut = nn.Conv2d(in_ch, out_ch, 1) if in_ch != out_ch else nn.Identity()
 
     def forward(self, x):
         residual = self.shortcut(x)
         out = self.conv(x)
-        out = self.drop_path(out)
-        out = out + residual
-        out = self.act(out)
+        out = out + self.drop_path(residual)
         return out
 
 
 class WeakConvBlock(nn.Module):
-    def __init__(self, in_ch, out_ch, p=0.5):
+    def __init__(self, in_ch, out_ch):
         super().__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(in_ch, out_ch, 1),
@@ -216,16 +215,8 @@ class WeakConvBlock(nn.Module):
             nn.ReLU(inplace=True)
         )
 
-        self.act = nn.ReLU(inplace=True)
-        self.drop_path = DropPath(p, inplace=False) if p > 0 else nn.Identity()
-        self.shortcut = nn.Conv2d(in_ch, out_ch, 1) if in_ch != out_ch else nn.Identity()
-
     def forward(self, x):
-        residual = self.shortcut(x)
         out = self.conv(x)
-        out = self.drop_path(out)
-        out = out + residual
-        out = self.act(out)
         return out
 
 
