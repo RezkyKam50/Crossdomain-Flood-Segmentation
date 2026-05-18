@@ -2,7 +2,35 @@ from collections import OrderedDict
 import torch.nn.functional as F
 import torch
 import torch.nn as nn
+from torch import Tensor
+from typing import Tuple
 
+class DropPath(nn.Module):
+    ''' Stochastic Dropout  (Gao Huang et al) applied to modules with residual connection'''
+    def __init__(self, p: float = 0.5, inplace: bool = False):
+        super().__init__()
+        self.p = p
+        self.inplace = inplace
+
+    def drop_path(self, x: Tensor, keep_prob: float = 1.0, inplace: bool = False) -> Tensor:
+        mask_shape: Tuple[int] = (x.shape[0],) + (1,) * (x.ndim - 1) 
+        # remember tuples have the * operator -> (1,) * 3 = (1,1,1)
+        mask: Tensor = x.new_empty(mask_shape).bernoulli_(keep_prob)
+        mask.div_(keep_prob)
+        if inplace:
+            x.mul_(mask)
+        else:
+            x = x * mask
+        return x
+
+    def forward(self, x: Tensor) -> Tensor:
+        if self.training and self.p > 0:
+            x = self.drop_path(x, self.p, self.inplace)
+        return x
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(p={self.p})" 
+ 
 
 class ChannelAttention(nn.Module):
     def __init__(self, in_planes, ratio=None):
@@ -24,28 +52,25 @@ class ModalityGate(nn.Module):
     def __init__(self, feature_dim):
         super().__init__()
         self.feature_dim = feature_dim
-        # Learn spatial weights for each modality
+  
         self.gate = nn.Sequential(
             nn.Conv2d(feature_dim * 2, feature_dim * 2, 1),
             nn.BatchNorm2d(feature_dim * 2),
             nn.ReLU(inplace=True),
-            nn.Conv2d(feature_dim * 2, 2, 1),  # 2 channels: S1_gate, S2_gate
-            nn.Softmax(dim=1)  # Competition between modalities
+            nn.Conv2d(feature_dim * 2, 2, 1),  
+            nn.Softmax(dim=1)  
         )
-        # Add projection to match output channels
+ 
         self.proj = nn.Conv2d(feature_dim, feature_dim * 2, 1)
     
     def forward(self, s1_feat, s2_feat):
         combined = torch.cat([s1_feat, s2_feat], dim=1)
-        gates = self.gate(combined)  # [B, 2, H, W]
-        
-        # Split gates and apply
-        s1_gate = gates[:, 0:1, :, :]  # [B, 1, H, W]
-        s2_gate = gates[:, 1:2, :, :]  # [B, 1, H, W]
-        
-        # Apply gates and concatenate
-        gated = s1_feat * s1_gate + s2_feat * s2_gate  # [B, feature_dim, H, W]
-        return self.proj(gated)  # [B, feature_dim * 2, H, W]
+        gates = self.gate(combined)  
+        s1_gate = gates[:, 0:1, :, :]   
+        s2_gate = gates[:, 1:2, :, :]  
+         
+        gated = s1_feat * s1_gate + s2_feat * s2_gate   
+        return self.proj(gated)  
 
 class FusionProjection(nn.Module):
     def __init__(self, dim):
@@ -164,29 +189,44 @@ class UNet(nn.Module):
 
 
 class ConvBlock(nn.Module):
-    def __init__(self, in_ch, out_ch):
-        super(ConvBlock, self).__init__()
+    def __init__(self, in_ch, out_ch, p=0.5):
+        super().__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(in_ch, out_ch, 3, padding=1),
             nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True)
         )
+        self.act = nn.ReLU(inplace=True)
+        self.drop_path = DropPath(p, inplace=False) if p > 0 else nn.Identity()
+        self.shortcut = nn.Conv2d(in_ch, out_ch, 1) if in_ch != out_ch else nn.Identity()
 
     def forward(self, x):
-        return self.conv(x)
+        residual = self.shortcut(x)
+        out = self.conv(x)
+        out = self.drop_path(out)
+        out = out + residual
+        out = self.act(out)
+        return out
 
 
 class WeakConvBlock(nn.Module):
-    def __init__(self, in_ch, out_ch):
+    def __init__(self, in_ch, out_ch, p=0.5):
         super().__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(in_ch, out_ch, 1),
             nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True)
         )
 
+        self.act = nn.ReLU(inplace=True)
+        self.drop_path = DropPath(p, inplace=False) if p > 0 else nn.Identity()
+        self.shortcut = nn.Conv2d(in_ch, out_ch, 1) if in_ch != out_ch else nn.Identity()
+
     def forward(self, x):
-        return self.conv(x)
+        residual = self.shortcut(x)
+        out = self.conv(x)
+        out = self.drop_path(out)
+        out = out + residual
+        out = self.act(out)
+        return out
 
 
 class InConv(nn.Module):
