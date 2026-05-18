@@ -30,7 +30,6 @@ class DropPath(nn.Module):
 
     def __repr__(self):
         return f"{self.__class__.__name__}(p={self.p})" 
- 
 
 class ChannelAttention(nn.Module):
     def __init__(self, in_planes, ratio=None):
@@ -60,7 +59,6 @@ class ModalityGate(nn.Module):
             nn.Conv2d(feature_dim * 2, 2, 1),  
             nn.Softmax(dim=1)  
         )
- 
         self.proj = nn.Conv2d(feature_dim, feature_dim * 2, 1)
     
     def forward(self, s1_feat, s2_feat):
@@ -105,8 +103,8 @@ class DSUNetMidFS(nn.Module):
         bottleneck_dim = topology[-1]
 
         self.bottleneck_fusion = FusionProjection(bottleneck_dim)
-        self.s1_attn = ChannelAttention(bottleneck_dim, 4)
-        self.s2_attn = ChannelAttention(bottleneck_dim, 4)
+        self.s1_attn = ChannelAttention(bottleneck_dim, 2)
+        self.s2_attn = ChannelAttention(bottleneck_dim, 2)
         self.modality_gate = ModalityGate(topology[0])
 
         self.out_conv = OutConv(2 * topology[0], out)
