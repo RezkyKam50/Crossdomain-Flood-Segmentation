@@ -6,7 +6,7 @@ from torch import Tensor
 from typing import Tuple
 
 
-def drop_path(self, x: Tensor, keep_prob: float = 1.0, inplace: bool = False) -> Tensor:
+def drop_path(x: Tensor, keep_prob: float = 1.0, inplace: bool = False) -> Tensor:
     mask_shape: Tuple[int] = (x.shape[0],) + (1,) * (x.ndim - 1) 
     # remember tuples have the * operator -> (1,) * 3 = (1,1,1)
     mask: Tensor = x.new_empty(mask_shape).bernoulli_(keep_prob)
