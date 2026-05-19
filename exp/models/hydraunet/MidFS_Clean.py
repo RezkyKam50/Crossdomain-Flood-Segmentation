@@ -48,29 +48,6 @@ class ChannelAttention(nn.Module):
         maxout = self.sharedMLP(self.max_pool(x))
         return F.softmax(avgout + maxout, dim=1)
 
-class ModalityGate(nn.Module):
-    def __init__(self, feature_dim):
-        super().__init__()
-        self.feature_dim = feature_dim
-  
-        self.gate = nn.Sequential(
-            nn.Conv2d(feature_dim * 2, feature_dim * 2, 1),
-            nn.BatchNorm2d(feature_dim * 2),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(feature_dim * 2, 2, 1),  
-            nn.Softmax(dim=1)  
-        )
-        self.proj = nn.Conv2d(feature_dim, feature_dim * 2, 1)
-    
-    def forward(self, s1_feat, s2_feat):
-        combined = torch.cat([s1_feat, s2_feat], dim=1)
-        gates = self.gate(combined)  
-        s1_gate = gates[:, 0:1, :, :]   
-        s2_gate = gates[:, 1:2, :, :]  
-         
-        gated = s1_feat * s1_gate + s2_feat * s2_gate   
-        return self.proj(gated)  
-
 class FusionProjection(nn.Module):
     def __init__(self, dim):
         super().__init__()
@@ -107,10 +84,8 @@ class DSUNetMidFS(nn.Module):
         self.s1_attn = ChannelAttention(bottleneck_dim, 4)
         self.s2_attn = ChannelAttention(bottleneck_dim, 4)
 
-        self.dp_s1 = DropPath(0.5, False)
-        self.dp_s2 = DropPath(0.5, False)
-
-        self.modality_gate = ModalityGate(topology[0])
+        self.dp_s1 = DropPath(0.7, False)
+        self.dp_s2 = DropPath(0.7, False)
 
         self.out_conv = OutConv(2 * topology[0], out)
 
@@ -129,9 +104,7 @@ class DSUNetMidFS(nn.Module):
         s1_feature = self.s1_stream.decode(s1_skips)
         s2_feature = self.s2_stream.decode(s2_skips)
 
-        # combined = torch.cat([s1_feature, s2_feature], dim=1)
-
-        combined = self.modality_gate(s1_feature, s2_feature)
+        combined = torch.cat([s1_feature, s2_feature], dim=1)
 
         return self.out_conv(combined)
 
