@@ -94,6 +94,21 @@ class DropBlock2D(nn.Module):
 #         maxout = self.sharedMLP(self.max_pool(x))
 #         return F.softmax(avgout + maxout, dim=1)
 
+class SelfAttention2D(nn.Module):
+    def __init__(self, in_channels, num_heads=4):
+        super().__init__()
+        self.norm = nn.GroupNorm(1, in_channels)
+        self.attn = nn.MultiheadAttention(in_channels, num_heads, batch_first=True)
+
+    def forward(self, x):
+        B, C, H, W = x.shape
+        # flatten spatial dims -> (B, H*W, C)
+        x_flat = self.norm(x).view(B, C, -1).permute(0, 2, 1)
+        attn_out, _ = self.attn(x_flat, x_flat, x_flat)
+        # reshape back + residual
+        attn_out = attn_out.permute(0, 2, 1).view(B, C, H, W)
+        return x + attn_out
+
 class FusionProjection(nn.Module):
     def __init__(self, dim):
         super().__init__()
@@ -130,8 +145,10 @@ class DSUNetMidFS(nn.Module):
         # self.s1_attn = ChannelAttention(bottleneck_dim, 4)
         # self.s2_attn = ChannelAttention(bottleneck_dim, 4)
 
-        self.dp_s1 = DropBlock2D(drop_prob=0.7, block_size=7)
-        self.dp_s2 = DropBlock2D(drop_prob=0.7, block_size=7)
+        self.dp_s1 = DropBlock2D(drop_prob=0.15, block_size=7)
+        self.dp_s2 = DropBlock2D(drop_prob=0.15, block_size=7)
+        self.s1_attn = SelfAttention2D(bottleneck_dim, num_heads=4)
+        self.s2_attn = SelfAttention2D(bottleneck_dim, num_heads=4)
 
         self.fusion_weight = nn.Parameter(torch.ones(2) / 2)
 
@@ -143,8 +160,8 @@ class DSUNetMidFS(nn.Module):
         s2_skips = self.s2_stream.encode(s2_img)
 
         fused = self.bottleneck_fusion(s1_skips[-1], s2_skips[-1])
-        s1_skips[-1] = self.dp_s1(fused)
-        s2_skips[-1] = self.dp_s2(fused)
+        s1_skips[-1] = self.dp_s1(self.s1_attn(s1_skips[-1] + fused))
+        s2_skips[-1] = self.dp_s2(self.s2_attn(s2_skips[-1] + fused))
 
         s1_feature = self.s1_stream.decode(s1_skips)
         s2_feature = self.s2_stream.decode(s2_skips)
