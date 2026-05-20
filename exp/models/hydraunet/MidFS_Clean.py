@@ -135,7 +135,7 @@ class DSUNetMidFS(nn.Module):
 
         self.fusion_weight = nn.Parameter(torch.ones(2) / 2)
 
-        self.out_conv = OutConv(2 * topology[0], out)
+        self.out_conv = OutConv(topology[0], out)
 
     def forward(self, s1_img, s2_img, dem, pw):
         s1 = torch.cat([s1_img, dem, pw], dim=1)
@@ -149,10 +149,11 @@ class DSUNetMidFS(nn.Module):
         s1_feature = self.s1_stream.decode(s1_skips)
         s2_feature = self.s2_stream.decode(s2_skips)
 
-        # combined = torch.cat([s1_feature, s2_feature], dim=1)
-
         w = torch.softmax(self.fusion_weight, dim=0)
-        combined = w[0] * s1_feature + w[1] * s2_feature
+        s1_feature = (w[0] * s1_feature) 
+        s2_feature = (w[1] * s2_feature) 
+        
+        combined = s1_feature + s2_feature
 
         return self.out_conv(combined)
 
