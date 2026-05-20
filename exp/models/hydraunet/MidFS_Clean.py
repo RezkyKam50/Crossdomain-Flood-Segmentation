@@ -164,10 +164,8 @@ class DSUNetMidFS(nn.Module):
         s2_feature = self.s2_stream.decode(s2_skips)
 
         w = torch.softmax(self.fusion_weight, dim=0)
-        s1_feature = (w[0] * s1_feature) 
-        s2_feature = (w[1] * s2_feature) 
         
-        combined = s1_feature + s2_feature
+        combined = (w[0].view(1, -1, 1, 1) * s1_feature) + (w[1].view(1, -1, 1, 1) * s2_feature)
 
         return self.out_conv(combined)
 
