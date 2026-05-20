@@ -138,19 +138,16 @@ class DSUNetMidFS(nn.Module):
         self.s2_stream = UNet(cfg, n_channels=n_s2_bands, n_classes=out,
                               topology=topology, enable_outc=False, weak=False)
 
-        # Bottleneck dim is the last topology value
         bottleneck_dim = topology[-1]
 
         self.bottleneck_fusion = FusionProjection(bottleneck_dim)
-        # self.s1_attn = ChannelAttention(bottleneck_dim, 4)
-        # self.s2_attn = ChannelAttention(bottleneck_dim, 4)
 
         self.dp_s1 = DropBlock2D(drop_prob=0.15, block_size=7)
         self.dp_s2 = DropBlock2D(drop_prob=0.15, block_size=7)
         self.s1_attn = SelfAttention2D(bottleneck_dim, num_heads=4)
         self.s2_attn = SelfAttention2D(bottleneck_dim, num_heads=4)
 
-        self.fusion_weight = nn.Parameter(torch.ones(2) / 2)
+        self.fusion_weight = nn.Parameter(torch.ones(2, topology[0]) / 2)
 
         self.out_conv = OutConv(topology[0], out)
 
