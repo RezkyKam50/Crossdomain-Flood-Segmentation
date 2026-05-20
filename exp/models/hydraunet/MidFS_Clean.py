@@ -32,27 +32,27 @@ class DropPath(nn.Module):
     def __repr__(self):
         return f"{self.__class__.__name__}(p={self.p})" 
 
-class ChannelAttention(nn.Module):
-    def __init__(self, in_planes, ratio=None):
-        super(ChannelAttention, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.max_pool = nn.AdaptiveMaxPool2d(1)
+# class ChannelAttention(nn.Module):
+#     def __init__(self, in_planes, ratio=None):
+#         super(ChannelAttention, self).__init__()
+#         self.avg_pool = nn.AdaptiveAvgPool2d(1)
+#         self.max_pool = nn.AdaptiveMaxPool2d(1)
 
-        self.sharedMLP = nn.Sequential(
-            nn.Conv2d(in_planes, in_planes // ratio, 1, bias=False),
-            nn.ReLU(),
-            nn.Conv2d(in_planes // ratio, in_planes, 1, bias=False))
+#         self.sharedMLP = nn.Sequential(
+#             nn.Conv2d(in_planes, in_planes // ratio, 1, bias=False),
+#             nn.ReLU(),
+#             nn.Conv2d(in_planes // ratio, in_planes, 1, bias=False))
 
-    def forward(self, x):
-        avgout = self.sharedMLP(self.avg_pool(x))
-        maxout = self.sharedMLP(self.max_pool(x))
-        return F.softmax(avgout + maxout, dim=1)
+#     def forward(self, x):
+#         avgout = self.sharedMLP(self.avg_pool(x))
+#         maxout = self.sharedMLP(self.max_pool(x))
+#         return F.softmax(avgout + maxout, dim=1)
 
 class FusionProjection(nn.Module):
     def __init__(self, dim):
         super().__init__()
         self.proj = nn.Sequential(
-            nn.Conv2d(dim * 2, dim, 1, bias=False),
+            nn.Conv2d(dim * 2, dim, 3, padding=1, bias=False),
             nn.BatchNorm2d(dim),
             nn.ReLU(inplace=True),
         )
@@ -81,11 +81,13 @@ class DSUNetMidFS(nn.Module):
         bottleneck_dim = topology[-1]
 
         self.bottleneck_fusion = FusionProjection(bottleneck_dim)
-        self.s1_attn = ChannelAttention(bottleneck_dim, 4)
-        self.s2_attn = ChannelAttention(bottleneck_dim, 4)
+        # self.s1_attn = ChannelAttention(bottleneck_dim, 4)
+        # self.s2_attn = ChannelAttention(bottleneck_dim, 4)
 
         self.dp_s1 = DropPath(0.7, False)
         self.dp_s2 = DropPath(0.7, False)
+
+        self.fusion_weight = nn.Parameter(torch.ones(2) / 2)
 
         self.out_conv = OutConv(2 * topology[0], out)
 
@@ -94,20 +96,19 @@ class DSUNetMidFS(nn.Module):
         s1_skips = self.s1_stream.encode(s1)
         s2_skips = self.s2_stream.encode(s2_img)
 
-        # Only fuse at the bottleneck (last element of skips)
         fused = self.bottleneck_fusion(s1_skips[-1], s2_skips[-1])
-        s1_skips[-1] = s1_skips[-1] * self.s1_attn(fused)
-        s2_skips[-1] = s2_skips[-1] * self.s2_attn(fused)
-        s1_skips[-1] = self.dp_s1(s1_skips[-1])
-        s2_skips[-1] = self.dp_s2(s2_skips[-1])
+        s1_skips[-1] = self.dp_s1(fused)
+        s2_skips[-1] = self.dp_s2(fused)
 
         s1_feature = self.s1_stream.decode(s1_skips)
         s2_feature = self.s2_stream.decode(s2_skips)
 
-        combined = torch.cat([s1_feature, s2_feature], dim=1)
+        # combined = torch.cat([s1_feature, s2_feature], dim=1)
+
+        w = torch.softmax(self.fusion_weight, dim=0)
+        combined = w[0] * s1_feature + w[1] * s2_feature
 
         return self.out_conv(combined)
-
 
 class UNet(nn.Module):
 
