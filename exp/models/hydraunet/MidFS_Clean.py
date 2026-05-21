@@ -2,6 +2,7 @@ from collections import OrderedDict
 import torch.nn.functional as F
 import torch
 import torch.nn as nn
+import math
 from torch import Tensor
 from typing import Tuple
 
@@ -172,6 +173,185 @@ class FiLMLayer(nn.Module):
     def forward(self, x, cond):
         return self.gamma(cond) * self.norm(x) + self.beta(cond)
 
+
+class GradientFilter(nn.Module):
+    def __init__(self, in_channels, branch_channels, num_directions=8, kernel_size=3):
+        super().__init__()
+        self.num_directions = num_directions
+        self.branches = nn.ModuleList()
+        angles = [0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5][:num_directions]
+        for angle in angles:
+            branch = nn.Conv2d(in_channels, branch_channels, kernel_size=kernel_size, padding=kernel_size//2, bias=False)
+            weight = self.get_rotated_sobel_kernel(angle, in_channels, branch_channels, kernel_size)
+            branch.weight.data.copy_(weight)
+            self.branches.append(branch)
+        
+        self.fusion_conv = nn.Conv2d(branch_channels * num_directions, in_channels, kernel_size=1)
+        self.norm = nn.BatchNorm2d(in_channels)
+
+    def get_rotated_sobel_kernel(self, angle, in_channels, out_channels, kernel_size):
+        base_kernel = torch.tensor([[-1., 0., 1.],
+                                     [-2., 0., 2.],
+                                     [-1., 0., 1.]], dtype=torch.float32)
+        theta = math.radians(angle)
+        rotated = torch.zeros_like(base_kernel)
+        center = kernel_size // 2
+        for i in range(kernel_size):
+            for j in range(kernel_size):
+                x = j - center
+                y = i - center
+                xr = x * math.cos(theta) - y * math.sin(theta)
+                yr = x * math.sin(theta) + y * math.cos(theta)
+                xi = int(round(xr)) + center
+                yi = int(round(yr)) + center
+                if 0 <= xi < kernel_size and 0 <= yi < kernel_size:
+                    rotated[i, j] = base_kernel[yi, xi]
+
+        weight = rotated.unsqueeze(0).unsqueeze(0).repeat(out_channels, in_channels, 1, 1)
+        return weight
+
+    def forward(self, x):
+        branch_outs = []
+        for branch in self.branches:
+            out = branch(x)
+            out = F.relu(out)
+            branch_outs.append(out)
+        multi_grad = torch.cat(branch_outs, dim=1)
+        fused = self.fusion_conv(multi_grad)
+        fused = self.norm(fused)
+        return fused
+ 
+class SC(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.dw = nn.Conv2d(channels, channels, 3, padding=1, groups=channels)
+        self.pw = nn.Conv2d(channels, channels, 1)
+        self.norm = nn.BatchNorm2d(channels)
+
+    def forward(self, x):
+        return self.norm(self.pw(self.dw(x)))
+    
+class FGE(nn.Module):
+    def __init__(self, in_channels):
+        super().__init__()
+        self.in_channels = in_channels
+
+        self.sc = nn.Sequential(
+            nn.Conv2d(in_channels, in_channels, kernel_size=1),
+            SC(in_channels),
+            nn.Conv2d(in_channels, in_channels, kernel_size=1)
+        )
+
+        self.md_gradient = GradientFilter(
+            in_channels, branch_channels=in_channels // 2, num_directions=8
+        )
+
+        self.channel_att = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Conv2d(in_channels, in_channels // 8, 1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels // 8, in_channels, 1),
+            nn.Sigmoid()
+        )
+
+        self.spatial_att = nn.Sequential(
+            nn.Conv2d(in_channels, 1, 1),
+            nn.Sigmoid()
+        )
+
+        self.dilated_conv = nn.ModuleList([
+            nn.Conv2d(in_channels, in_channels, kernel_size=3, dilation=d, padding=d)
+            for d in [1, 2, 3]
+        ])
+
+        self.fusion_multi_scale = nn.Conv2d(in_channels * 3, in_channels, kernel_size=1)
+        self.norm = nn.InstanceNorm2d(in_channels, eps=1e-6)
+
+        self.gaussian = nn.Conv2d(
+            in_channels, in_channels, kernel_size=3, padding=1, groups=in_channels, bias=False
+        )
+        nn.init.normal_(self.gaussian.weight, mean=0.0, std=0.01)
+
+    def forward(self, x):
+        x = x.float()
+
+        feat = self.sc(x) + x
+        
+        grad_feat = self.md_gradient(feat)
+        fused_feat = feat + grad_feat
+
+        ca = self.channel_att(fused_feat)
+        sa = self.spatial_att(fused_feat)
+        att_feat = fused_feat * ca * sa + fused_feat
+
+        H, W = att_feat.shape[2:]
+
+        ms_features = []
+        for conv in self.dilated_conv:
+            feat_d = conv(att_feat)
+            ms_features.append(F.interpolate(feat_d, size=(H, W), mode='bilinear', align_corners=False))
+
+        ms_fused = self.fusion_multi_scale(torch.cat(ms_features, dim=1))
+
+        normed = self.norm(ms_fused)
+        filtered = self.gaussian(normed)
+
+        output = filtered + att_feat
+        return output
+
+
+
+class SatelliteSTN(nn.Module):
+    def __init__(self, s1_channels, s2_channels):
+        super().__init__()
+ 
+        self.fge_s1 = FGE(s1_channels)
+        self.fge_s2 = FGE(s2_channels)
+
+        fused_ch = s1_channels + s2_channels
+ 
+        self.coarse_loc = nn.Sequential(
+            nn.Conv2d(fused_ch, 32, 7, padding=3),
+            nn.MaxPool2d(2), nn.ReLU(),
+            nn.Conv2d(32, 64, 5, padding=2),
+            nn.AdaptiveAvgPool2d(4), nn.ReLU(),
+            nn.Flatten(),
+            nn.Linear(64 * 4 * 4, 6)
+        )
+        self.coarse_loc[-1].weight.data.zero_()
+        self.coarse_loc[-1].bias.data.copy_(
+            torch.tensor([1, 0, 0, 0, 1, 0], dtype=torch.float))
+ 
+        self.fine_loc = nn.Sequential(
+            nn.Conv2d(fused_ch, 64, 3, padding=1), nn.ReLU(),
+            nn.Conv2d(64, 64, 3, padding=1), nn.ReLU(),
+            nn.Conv2d(64, 2, 3, padding=1),
+            nn.Tanh()
+        )
+
+    def forward(self, s1, s2):
+ 
+        s1_enh = self.fge_s1(s1)
+        s2_enh = self.fge_s2(s2)
+ 
+        fused = torch.cat([s1_enh, s2_enh], dim=1)
+        theta = self.coarse_loc(fused).view(-1, 2, 3)
+        grid_c = F.affine_grid(theta, s1.size(), align_corners=False)
+        s1_coarse = F.grid_sample(s1, grid_c, align_corners=False,
+                                   padding_mode='reflection')
+        s1_coarse_enh = self.fge_s1(s1_coarse)
+        fused2 = torch.cat([s1_coarse_enh, s2_enh], dim=1)
+        flow = self.fine_loc(fused2) * 0.1
+        B, _, H, W = s1.shape
+        base = F.affine_grid(
+            torch.eye(2, 3, device=s1.device).unsqueeze(0).expand(B, -1, -1),
+            s1.size(), align_corners=False)
+        grid_f = base + flow.permute(0, 2, 3, 1)
+        s1_aligned = F.grid_sample(s1_coarse, grid_f, align_corners=False,
+                                    padding_mode='reflection')
+
+        return s1_aligned
+
 class DSUNetMidFS(nn.Module):
     def __init__(self, cfg):
         super(DSUNetMidFS, self).__init__()
@@ -192,6 +372,7 @@ class DSUNetMidFS(nn.Module):
         self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=8)
         self.bottleneck_projection = FusionProjection(bottleneck_dim)
 
+        self.s1_aligner = SatelliteSTN(n_s1_bands, n_s2_bands)
         self.dp_s1 = DropBlock2D(drop_prob=0.25, block_size=12)
         self.dp_s2 = DropBlock2D(drop_prob=0.25, block_size=12)
         self.s1_attn = SelfAttention2D(bottleneck_dim, num_heads=4)
@@ -204,18 +385,24 @@ class DSUNetMidFS(nn.Module):
         self.out_conv = OutConv(topology[0], out)
 
     def forward(self, s1_img, s2_img, dem, pw):
+
+        s1_img = self.s1_aligner(s1_img, s2_img)
+
         s1_skips = self.s1_stream.encode(s1_img)
         s2_skips = self.s2_stream.encode(s2_img)
 
         s1_bot, s2_bot = self.bottleneck_cma(s1_skips[-1], s2_skips[-1])
         residual_proj = self.bottleneck_projection(s1_skips[-1], s2_skips[-1])
+        
         bot_size = s1_bot.shape[2:]
         dem_ds = F.interpolate(dem, size=bot_size, mode='bilinear', align_corners=False)
         pw_ds  = F.interpolate(pw,  size=bot_size, mode='bilinear', align_corners=False)
         s1_bot = self.dem_film(s1_bot, dem_ds)
         s1_bot = self.pw_film(s1_bot,  pw_ds)
+
         s1_skips[-1] = self.dp_s1(self.s1_attn(s1_bot)) + residual_proj
         s2_skips[-1] = self.dp_s2(self.s2_attn(s2_bot)) + residual_proj
+
         s1_feature = self.s1_stream.decode(s1_skips)
         s2_feature = self.s2_stream.decode(s2_skips)
 
