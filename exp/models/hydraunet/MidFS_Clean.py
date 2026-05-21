@@ -165,11 +165,12 @@ class CrossModalAttention(nn.Module):
 class FiLMLayer(nn.Module):
     def __init__(self, cond_channels, feat_channels):
         super().__init__()
+        self.norm  = nn.GroupNorm(1, feat_channels)  
         self.gamma = nn.Conv2d(cond_channels, feat_channels, 1)
         self.beta  = nn.Conv2d(cond_channels, feat_channels, 1)
 
     def forward(self, x, cond):
-        return self.gamma(cond) * x + self.beta(cond)
+        return self.gamma(cond) * self.norm(x) + self.beta(cond)
 
 class DSUNetMidFS(nn.Module):
     def __init__(self, cfg):
