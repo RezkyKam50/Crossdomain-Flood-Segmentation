@@ -121,11 +121,54 @@ class FusionProjection(nn.Module):
     def forward(self, x1, x2):
         return self.proj(torch.cat([x1, x2], dim=1))
 
+class CrossModalAttention(nn.Module):
+    """
+    Each modality queries the other.
+    x1 (query) attends to x2 (key/value) → out1 = x1 + cross_attn(x1, x2)
+    x2 (query) attends to x1 (key/value) → out2 = x2 + cross_attn(x2, x1)
+    """
+    def __init__(self, dim: int, num_heads: int = 8):
+        super().__init__()
+        self.norm1 = nn.GroupNorm(1, dim)
+        self.norm2 = nn.GroupNorm(1, dim)
+        # shared attention for both directions
+        self.attn_1to2 = nn.MultiheadAttention(dim, num_heads, batch_first=True)
+        self.attn_2to1 = nn.MultiheadAttention(dim, num_heads, batch_first=True)
+
+    def _flatten(self, x: Tensor) -> Tensor:
+        # (B, C, H, W) → (B, H*W, C)
+        B, C, H, W = x.shape
+        return x.view(B, C, -1).permute(0, 2, 1)
+
+    def _restore(self, x_flat: Tensor, shape: Tuple[int, ...]) -> Tensor:
+        # (B, H*W, C) → (B, C, H, W)
+        B, C, H, W = shape
+        return x_flat.permute(0, 2, 1).view(B, C, H, W)
+
+    def forward(self, x1: Tensor, x2: Tensor) -> Tuple[Tensor, Tensor]:
+        shape1, shape2 = x1.shape, x2.shape
+
+        q1 = self._flatten(self.norm1(x1))
+        kv2 = self._flatten(self.norm2(x2))
+        q2 = self._flatten(self.norm2(x2))
+        kv1 = self._flatten(self.norm1(x1))
+
+        # S1 queries S2
+        out1, _ = self.attn_1to2(q1, kv2, kv2)
+        # S2 queries S1
+        out2, _ = self.attn_2to1(q2, kv1, kv1)
+
+        return (
+            x1 + self._restore(out1, shape1),
+            x2 + self._restore(out2, shape2),
+        )
+    
 
 class DSUNetMidFS(nn.Module):
-    def __init__(self, cfg):
+    def __init__(self, cfg, cma=True):
         super(DSUNetMidFS, self).__init__()
         self._cfg = cfg
+        self.cma = cma
 
         out = cfg.MODEL.OUT_CHANNELS
         topology = cfg.MODEL.TOPOLOGY
@@ -140,12 +183,13 @@ class DSUNetMidFS(nn.Module):
 
         bottleneck_dim = topology[-1]
 
-        self.bottleneck_fusion = FusionProjection(bottleneck_dim)
+        self.bottleneck_fusion = CrossModalAttention(bottleneck_dim, num_heads=8) if cma else \
+            FusionProjection(bottleneck_dim) 
 
-        self.dp_s1 = DropBlock2D(drop_prob=0.15, block_size=7)
-        self.dp_s2 = DropBlock2D(drop_prob=0.15, block_size=7)
-        self.s1_attn = SelfAttention2D(bottleneck_dim, num_heads=4)
-        self.s2_attn = SelfAttention2D(bottleneck_dim, num_heads=4)
+        self.dp_s1 = DropBlock2D(drop_prob=0.25, block_size=12)
+        self.dp_s2 = DropBlock2D(drop_prob=0.25, block_size=12)
+        self.s1_attn = SelfAttention2D(bottleneck_dim, num_heads=6)
+        self.s2_attn = SelfAttention2D(bottleneck_dim, num_heads=6)
 
         self.fusion_weight = nn.Parameter(torch.ones(2, topology[0]) / 2)
 
@@ -156,9 +200,14 @@ class DSUNetMidFS(nn.Module):
         s1_skips = self.s1_stream.encode(s1)
         s2_skips = self.s2_stream.encode(s2_img)
 
-        fused = self.bottleneck_fusion(s1_skips[-1], s2_skips[-1])
-        s1_skips[-1] = self.dp_s1(self.s1_attn(s1_skips[-1] + fused))
-        s2_skips[-1] = self.dp_s2(self.s2_attn(s2_skips[-1] + fused))
+        if not self.cma:
+            fused = self.bottleneck_fusion(s1_skips[-1], s2_skips[-1])
+            s1_skips[-1] = self.dp_s1(self.s1_attn(s1_skips[-1] + fused))
+            s2_skips[-1] = self.dp_s2(self.s2_attn(s2_skips[-1] + fused))
+        else:
+            s1_bot, s2_bot = self.bottleneck_fusion(s1_skips[-1], s2_skips[-1])
+            s1_skips[-1] = self.dp_s1(self.s1_attn(s1_bot))
+            s2_skips[-1] = self.dp_s2(self.s2_attn(s2_bot))
 
         s1_feature = self.s1_stream.decode(s1_skips)
         s2_feature = self.s2_stream.decode(s2_skips)
