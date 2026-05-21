@@ -302,14 +302,17 @@ class FGE(nn.Module):
 
 
 class SatelliteSTN(nn.Module):
-    def __init__(self, s1_channels, s2_channels):
+    def __init__(self, s1_channels, s2_channels, feat_dim):
         super().__init__()
- 
-        self.fge_s1 = FGE(s1_channels)
-        self.fge_s2 = FGE(s2_channels)
 
-        fused_ch = s1_channels + s2_channels
- 
+        self.s1_proj = nn.Sequential(nn.Conv2d(s1_channels, feat_dim, 1), nn.ReLU())
+        self.s2_proj = nn.Sequential(nn.Conv2d(s2_channels, feat_dim, 1), nn.ReLU())
+
+        self.fge_s1 = FGE(feat_dim)
+        self.fge_s2 = FGE(feat_dim)
+
+        fused_ch = feat_dim * 2
+
         self.coarse_loc = nn.Sequential(
             nn.Conv2d(fused_ch, 32, 7, padding=3),
             nn.MaxPool2d(2), nn.ReLU(),
@@ -321,7 +324,7 @@ class SatelliteSTN(nn.Module):
         self.coarse_loc[-1].weight.data.zero_()
         self.coarse_loc[-1].bias.data.copy_(
             torch.tensor([1, 0, 0, 0, 1, 0], dtype=torch.float))
- 
+
         self.fine_loc = nn.Sequential(
             nn.Conv2d(fused_ch, 64, 3, padding=1), nn.ReLU(),
             nn.Conv2d(64, 64, 3, padding=1), nn.ReLU(),
@@ -330,18 +333,19 @@ class SatelliteSTN(nn.Module):
         )
 
     def forward(self, s1, s2):
- 
-        s1_enh = self.fge_s1(s1)
-        s2_enh = self.fge_s2(s2)
- 
+        s1_enh = self.fge_s1(self.s1_proj(s1))
+        s2_enh = self.fge_s2(self.s2_proj(s2))
+
         fused = torch.cat([s1_enh, s2_enh], dim=1)
         theta = self.coarse_loc(fused).view(-1, 2, 3)
         grid_c = F.affine_grid(theta, s1.size(), align_corners=False)
         s1_coarse = F.grid_sample(s1, grid_c, align_corners=False,
                                    padding_mode='reflection')
-        s1_coarse_enh = self.fge_s1(s1_coarse)
+
+        s1_coarse_enh = self.fge_s1(self.s1_proj(s1_coarse))
         fused2 = torch.cat([s1_coarse_enh, s2_enh], dim=1)
         flow = self.fine_loc(fused2) * 0.1
+
         B, _, H, W = s1.shape
         base = F.affine_grid(
             torch.eye(2, 3, device=s1.device).unsqueeze(0).expand(B, -1, -1),
@@ -351,6 +355,7 @@ class SatelliteSTN(nn.Module):
                                     padding_mode='reflection')
 
         return s1_aligned
+    
 
 class DSUNetMidFS(nn.Module):
     def __init__(self, cfg):
@@ -372,7 +377,7 @@ class DSUNetMidFS(nn.Module):
         self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=8)
         self.bottleneck_projection = FusionProjection(bottleneck_dim)
 
-        self.s1_aligner = SatelliteSTN(n_s1_bands, n_s2_bands)
+        self.s1_aligner = SatelliteSTN(n_s1_bands, n_s2_bands, feat_dim=topology[0])
         self.dp_s1 = DropBlock2D(drop_prob=0.25, block_size=12)
         self.dp_s2 = DropBlock2D(drop_prob=0.25, block_size=12)
         self.s1_attn = SelfAttention2D(bottleneck_dim, num_heads=4)
@@ -387,7 +392,7 @@ class DSUNetMidFS(nn.Module):
     def forward(self, s1_img, s2_img, dem, pw):
 
         s1_img = self.s1_aligner(s1_img, s2_img)
-
+        
         s1_skips = self.s1_stream.encode(s1_img)
         s2_skips = self.s2_stream.encode(s2_img)
 
