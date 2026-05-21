@@ -6,79 +6,6 @@ import math
 from torch import Tensor
 from typing import Tuple
 
-
-class DropBlock2D(nn.Module):
-    r"""Randomly zeroes 2D spatial blocks of the input tensor.
-
-    As described in the paper
-    `DropBlock: A regularization method for convolutional networks`_ ,
-    dropping whole blocks of feature map allows to remove semantic
-    information as compared to regular dropout.
-
-    Args:
-        drop_prob (float): probability of an element to be dropped.
-        block_size (int): size of the block to drop
-
-    Shape:
-        - Input: `(N, C, H, W)`
-        - Output: `(N, C, H, W)`
-
-    .. _DropBlock: A regularization method for convolutional networks:
-       https://arxiv.org/abs/1810.12890
-
-    """
-
-    def __init__(self, drop_prob, block_size):
-        super(DropBlock2D, self).__init__()
-
-        self.drop_prob = drop_prob
-        self.block_size = block_size
-
-    def forward(self, x):
-        # shape: (bsize, channels, height, width)
-
-        assert x.dim() == 4, \
-            "Expected input with 4 dimensions (bsize, channels, height, width)"
-
-        if not self.training or self.drop_prob == 0.:
-            return x
-        else:
-            # get gamma value
-            gamma = self._compute_gamma(x)
-
-            # sample mask
-            mask = (torch.rand(x.shape[0], *x.shape[2:]) < gamma).float()
-
-            # place mask on input device
-            mask = mask.to(x.device)
-
-            # compute block mask
-            block_mask = self._compute_block_mask(mask)
-
-            # apply block mask
-            out = x * block_mask[:, None, :, :]
-
-            # scale output
-            out = out * block_mask.numel() / block_mask.sum()
-
-            return out
-
-    def _compute_block_mask(self, mask):
-        block_mask = F.max_pool2d(input=mask[:, None, :, :],
-                                  kernel_size=(self.block_size, self.block_size),
-                                  stride=(1, 1),
-                                  padding=self.block_size // 2)
-
-        if self.block_size % 2 == 0:
-            block_mask = block_mask[:, :, :-1, :-1]
-
-        block_mask = 1 - block_mask.squeeze(1)
-
-        return block_mask
-
-    def _compute_gamma(self, x):
-        return self.drop_prob / (self.block_size ** 2)
-
 # class ChannelAttention(nn.Module):
 #     def __init__(self, in_planes, ratio=None):
 #         super(ChannelAttention, self).__init__()
@@ -95,30 +22,6 @@ class DropBlock2D(nn.Module):
 #         maxout = self.sharedMLP(self.max_pool(x))
 #         return F.softmax(avgout + maxout, dim=1)
 
-class SelfAttention2D(nn.Module):
-    def __init__(self, in_channels, num_heads=4):
-        super().__init__()
-        self.norm = nn.GroupNorm(1, in_channels)
-        self.attn = nn.MultiheadAttention(in_channels, num_heads, batch_first=True)
-
-    def forward(self, x):
-        B, C, H, W = x.shape
-        # flatten spatial dims -> (B, H*W, C)
-        x_flat = self.norm(x).view(B, C, -1).permute(0, 2, 1)
-        attn_out, _ = self.attn(x_flat, x_flat, x_flat)
-        # reshape back + residual
-        attn_out = attn_out.permute(0, 2, 1).view(B, C, H, W)
-        return x + attn_out
-
-class FusionProjection(nn.Module):
-    def __init__(self, dim):
-        super().__init__()
-        self.proj = nn.Sequential(
-            nn.Conv2d(dim * 2, dim, 1, bias=False)
-        )
-
-    def forward(self, x1, x2):
-        return self.proj(torch.cat([x1, x2], dim=1))
 
 
 class CrossModalAttention(nn.Module):
@@ -163,23 +66,12 @@ class CrossModalAttention(nn.Module):
             x2 + self._restore(out2, shape2),
         )
 
-class FiLMLayer(nn.Module):
-    def __init__(self, cond_channels, feat_channels):
-        super().__init__()
-        self.norm  = nn.GroupNorm(1, feat_channels)  
-        self.gamma = nn.Conv2d(cond_channels, feat_channels, 1)
-        self.beta  = nn.Conv2d(cond_channels, feat_channels, 1)
-
-    def forward(self, x, cond):
-        return self.gamma(cond) * self.norm(x) + self.beta(cond)
-
-
 class GradientFilter(nn.Module):
     def __init__(self, in_channels, branch_channels, num_directions=8, kernel_size=3):
         super().__init__()
         self.num_directions = num_directions
         self.branches = nn.ModuleList()
-        angles = [0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5][:num_directions]
+        angles = [0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5][:num_directions] 
         for angle in angles:
             branch = nn.Conv2d(in_channels, branch_channels, kernel_size=kernel_size, padding=kernel_size//2, bias=False)
             weight = self.get_rotated_sobel_kernel(angle, in_channels, branch_channels, kernel_size)
@@ -304,7 +196,7 @@ class FGE(nn.Module):
 class SatelliteSTN(nn.Module):
     def __init__(self, s1_channels, s2_channels, feat_dim):
         super().__init__()
-
+        '''Predicts x,y shifts, resamples pixels'''
         self.s1_proj = nn.Sequential(nn.Conv2d(s1_channels, feat_dim, 1), nn.ReLU())
         self.s2_proj = nn.Sequential(nn.Conv2d(s2_channels, feat_dim, 1), nn.ReLU())
 
@@ -364,7 +256,7 @@ class DSUNetMidFS(nn.Module):
 
         out = cfg.MODEL.OUT_CHANNELS
         topology = cfg.MODEL.TOPOLOGY
-        n_s1_bands = len(cfg.DATASET.SENTINEL1_BANDS)
+        n_s1_bands = len(cfg.DATASET.SENTINEL1_BANDS) + 2 # dem, pw each 1 ch
         n_s2_bands = len(cfg.DATASET.SENTINEL2_BANDS)
  
         self.s1_stream = UNet(cfg, n_channels=n_s1_bands, n_classes=out,
@@ -375,38 +267,24 @@ class DSUNetMidFS(nn.Module):
         bottleneck_dim = topology[-1]
 
         self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=8)
-        self.bottleneck_projection = FusionProjection(bottleneck_dim)
 
         self.s1_aligner = SatelliteSTN(n_s1_bands, n_s2_bands, feat_dim=topology[0])
-        self.dp_s1 = DropBlock2D(drop_prob=0.25, block_size=12)
-        self.dp_s2 = DropBlock2D(drop_prob=0.25, block_size=12)
-        self.s1_attn = SelfAttention2D(bottleneck_dim, num_heads=4)
-        self.s2_attn = SelfAttention2D(bottleneck_dim, num_heads=4)
- 
-        self.dem_film = FiLMLayer(cond_channels=1, feat_channels=bottleneck_dim)
-        self.pw_film  = FiLMLayer(cond_channels=1, feat_channels=bottleneck_dim)
 
         self.fusion_weight = nn.Parameter(torch.ones(2, topology[0]) / 2)
         self.out_conv = OutConv(topology[0], out)
 
-    def forward(self, s1_img, s2_img, dem, pw):
 
+    def forward(self, s1_img, s2_img, dem, pw):
+        s1_img = torch.cat([s1_img, dem, pw], dim=1)
         s1_img = self.s1_aligner(s1_img, s2_img)
-        
+
         s1_skips = self.s1_stream.encode(s1_img)
         s2_skips = self.s2_stream.encode(s2_img)
 
         s1_bot, s2_bot = self.bottleneck_cma(s1_skips[-1], s2_skips[-1])
-        residual_proj = self.bottleneck_projection(s1_skips[-1], s2_skips[-1])
-        
-        bot_size = s1_bot.shape[2:]
-        dem_ds = F.interpolate(dem, size=bot_size, mode='bilinear', align_corners=False)
-        pw_ds  = F.interpolate(pw,  size=bot_size, mode='bilinear', align_corners=False)
-        s1_bot = self.dem_film(s1_bot, dem_ds)
-        s1_bot = self.pw_film(s1_bot,  pw_ds)
 
-        s1_skips[-1] = self.dp_s1(self.s1_attn(s1_bot)) + residual_proj
-        s2_skips[-1] = self.dp_s2(self.s2_attn(s2_bot)) + residual_proj
+        s1_skips[-1] = s1_bot
+        s2_skips[-1] = s2_bot
 
         s1_feature = self.s1_stream.decode(s1_skips)
         s2_feature = self.s2_stream.decode(s2_skips)
