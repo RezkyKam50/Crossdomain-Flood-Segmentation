@@ -292,7 +292,7 @@ class DSUNetMidFS(nn.Module):
 
         bottleneck_dim = topology[-1]
 
-        self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=4)
+        self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=8)
 
         self.s1_aligner = SatelliteSTN(n_s1_bands, n_s2_bands, feat_dim=topology[0])
 
