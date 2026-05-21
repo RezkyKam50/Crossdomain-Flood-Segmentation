@@ -183,8 +183,8 @@ class DSUNetMidFS(nn.Module):
 
         bottleneck_dim = topology[-1]
 
-        self.bottleneck_fusion = CrossModalAttention(bottleneck_dim, num_heads=8) if cma else \
-            FusionProjection(bottleneck_dim) 
+        self.bottleneck_fusion = CrossModalAttention(bottleneck_dim, num_heads=8) if cma \
+           else FusionProjection(bottleneck_dim) 
 
         self.dp_s1 = DropBlock2D(drop_prob=0.25, block_size=12)
         self.dp_s2 = DropBlock2D(drop_prob=0.25, block_size=12)
@@ -196,6 +196,11 @@ class DSUNetMidFS(nn.Module):
         self.out_conv = OutConv(topology[0], out)
 
     def forward(self, s1_img, s2_img, dem, pw):
+        '''
+        sentinel 1 : VV & VH
+        sentinel 2 : [1,2,3,8,11,12] spectral bands (C dim)
+        
+        '''
         s1 = torch.cat([s1_img, dem, pw], dim=1)
         s1_skips = self.s1_stream.encode(s1)
         s2_skips = self.s2_stream.encode(s2_img)
