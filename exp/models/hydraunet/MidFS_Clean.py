@@ -194,8 +194,8 @@ class DSUNetMidFS(nn.Module):
 
         self.dp_s1 = DropBlock2D(drop_prob=0.25, block_size=12)
         self.dp_s2 = DropBlock2D(drop_prob=0.25, block_size=12)
-        self.s1_attn = SelfAttention2D(bottleneck_dim, num_heads=6)
-        self.s2_attn = SelfAttention2D(bottleneck_dim, num_heads=6)
+        self.s1_attn = SelfAttention2D(bottleneck_dim, num_heads=4)
+        self.s2_attn = SelfAttention2D(bottleneck_dim, num_heads=4)
  
         self.dem_film = FiLMLayer(cond_channels=1, feat_channels=bottleneck_dim)
         self.pw_film  = FiLMLayer(cond_channels=1, feat_channels=bottleneck_dim)
