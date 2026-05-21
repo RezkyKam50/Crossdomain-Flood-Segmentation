@@ -113,19 +113,18 @@ class FusionProjection(nn.Module):
     def __init__(self, dim):
         super().__init__()
         self.proj = nn.Sequential(
-            nn.Conv2d(dim * 2, dim, 3, padding=1, bias=False),
-            nn.BatchNorm2d(dim),
-            nn.ReLU(inplace=True),
+            nn.Conv2d(dim * 2, dim, 1, bias=False)
         )
 
     def forward(self, x1, x2):
         return self.proj(torch.cat([x1, x2], dim=1))
 
+
 class CrossModalAttention(nn.Module):
     """
     Each modality queries the other.
-    x1 (query) attends to x2 (key/value) → out1 = x1 + cross_attn(x1, x2)
-    x2 (query) attends to x1 (key/value) → out2 = x2 + cross_attn(x2, x1)
+    x1 (query) attends to x2 (key/value) -> out1 = x1 + cross_attn(x1, x2)
+    x2 (query) attends to x1 (key/value) -> out2 = x2 + cross_attn(x2, x1)
     """
     def __init__(self, dim: int, num_heads: int = 8):
         super().__init__()
@@ -136,12 +135,12 @@ class CrossModalAttention(nn.Module):
         self.attn_2to1 = nn.MultiheadAttention(dim, num_heads, batch_first=True)
 
     def _flatten(self, x: Tensor) -> Tensor:
-        # (B, C, H, W) → (B, H*W, C)
+        # (B, C, H, W) -> (B, H*W, C)
         B, C, H, W = x.shape
         return x.view(B, C, -1).permute(0, 2, 1)
 
     def _restore(self, x_flat: Tensor, shape: Tuple[int, ...]) -> Tensor:
-        # (B, H*W, C) → (B, C, H, W)
+        # (B, H*W, C) -> (B, C, H, W)
         B, C, H, W = shape
         return x_flat.permute(0, 2, 1).view(B, C, H, W)
 
@@ -162,63 +161,64 @@ class CrossModalAttention(nn.Module):
             x1 + self._restore(out1, shape1),
             x2 + self._restore(out2, shape2),
         )
-    
+
+class FiLMLayer(nn.Module):
+    def __init__(self, cond_channels, feat_channels):
+        super().__init__()
+        self.gamma = nn.Conv2d(cond_channels, feat_channels, 1)
+        self.beta  = nn.Conv2d(cond_channels, feat_channels, 1)
+
+    def forward(self, x, cond):
+        return self.gamma(cond) * x + self.beta(cond)
 
 class DSUNetMidFS(nn.Module):
-    def __init__(self, cfg, cma=True):
+    def __init__(self, cfg):
         super(DSUNetMidFS, self).__init__()
         self._cfg = cfg
-        self.cma = cma
 
         out = cfg.MODEL.OUT_CHANNELS
         topology = cfg.MODEL.TOPOLOGY
         n_s1_bands = len(cfg.DATASET.SENTINEL1_BANDS)
         n_s2_bands = len(cfg.DATASET.SENTINEL2_BANDS)
-
-        self.s1_stream = UNet(cfg, n_channels=n_s1_bands + 2, n_classes=out,
+ 
+        self.s1_stream = UNet(cfg, n_channels=n_s1_bands, n_classes=out,
                               topology=topology, enable_outc=False, weak=True)
-
         self.s2_stream = UNet(cfg, n_channels=n_s2_bands, n_classes=out,
                               topology=topology, enable_outc=False, weak=False)
 
         bottleneck_dim = topology[-1]
 
-        self.bottleneck_fusion = CrossModalAttention(bottleneck_dim, num_heads=8) if cma \
-           else FusionProjection(bottleneck_dim) 
+        self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=8)
+        self.bottleneck_projection = FusionProjection(bottleneck_dim)
 
         self.dp_s1 = DropBlock2D(drop_prob=0.25, block_size=12)
         self.dp_s2 = DropBlock2D(drop_prob=0.25, block_size=12)
         self.s1_attn = SelfAttention2D(bottleneck_dim, num_heads=6)
         self.s2_attn = SelfAttention2D(bottleneck_dim, num_heads=6)
+ 
+        self.dem_film = FiLMLayer(cond_channels=1, feat_channels=bottleneck_dim)
+        self.pw_film  = FiLMLayer(cond_channels=1, feat_channels=bottleneck_dim)
 
         self.fusion_weight = nn.Parameter(torch.ones(2, topology[0]) / 2)
-
         self.out_conv = OutConv(topology[0], out)
 
     def forward(self, s1_img, s2_img, dem, pw):
-        '''
-        sentinel 1 : VV & VH
-        sentinel 2 : [1,2,3,8,11,12] spectral bands (C dim)
-        
-        '''
-        s1 = torch.cat([s1_img, dem, pw], dim=1)
-        s1_skips = self.s1_stream.encode(s1)
+        s1_skips = self.s1_stream.encode(s1_img)
         s2_skips = self.s2_stream.encode(s2_img)
 
-        if not self.cma:
-            fused = self.bottleneck_fusion(s1_skips[-1], s2_skips[-1])
-            s1_skips[-1] = self.dp_s1(self.s1_attn(s1_skips[-1] + fused))
-            s2_skips[-1] = self.dp_s2(self.s2_attn(s2_skips[-1] + fused))
-        else:
-            s1_bot, s2_bot = self.bottleneck_fusion(s1_skips[-1], s2_skips[-1])
-            s1_skips[-1] = self.dp_s1(self.s1_attn(s1_bot))
-            s2_skips[-1] = self.dp_s2(self.s2_attn(s2_bot))
-
+        s1_bot, s2_bot = self.bottleneck_cma(s1_skips[-1], s2_skips[-1])
+        residual_proj = self.bottleneck_projection(s1_skips[-1], s2_skips[-1])
+        bot_size = s1_bot.shape[2:]
+        dem_ds = F.interpolate(dem, size=bot_size, mode='bilinear', align_corners=False)
+        pw_ds  = F.interpolate(pw,  size=bot_size, mode='bilinear', align_corners=False)
+        s1_bot = self.dem_film(s1_bot, dem_ds)
+        s1_bot = self.pw_film(s1_bot,  pw_ds)
+        s1_skips[-1] = self.dp_s1(self.s1_attn(s1_bot)) + residual_proj
+        s2_skips[-1] = self.dp_s2(self.s2_attn(s2_bot)) + residual_proj
         s1_feature = self.s1_stream.decode(s1_skips)
         s2_feature = self.s2_stream.decode(s2_skips)
 
         w = torch.softmax(self.fusion_weight, dim=0)
-        
         combined = (w[0].view(1, -1, 1, 1) * s1_feature) + (w[1].view(1, -1, 1, 1) * s2_feature)
 
         return self.out_conv(combined)
