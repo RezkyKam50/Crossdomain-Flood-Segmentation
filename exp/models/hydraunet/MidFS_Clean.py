@@ -353,6 +353,7 @@ class DSUNetMidFS(nn.Module):
 
         self.out_conv = OutConv(topology[0], out)
 
+
     def forward(self, s1_img, s2_img, dem, pw):
         s1_img = torch.cat([s1_img, dem, pw], dim=1)
         s1_img = self.s1_aligner(s1_img, s2_img)
@@ -360,6 +361,9 @@ class DSUNetMidFS(nn.Module):
         s1_skips = self.s1_stream.encode(s1_img)   # [x1, x2, ..., bottleneck]
         s2_skips = self.s2_stream.encode(s2_img)
  
+        print(f"s1_skips length: {len(s1_skips)}, s2_skips length: {len(s2_skips)}")
+        print(f"skip_fuse length: {len(self.skip_fuse)}")
+
         if self.use_sdpa:
             s1_bot, s2_bot = self.bottleneck_cma(s1_skips[-1], s2_skips[-1])
             s1_skips[-1] = s1_bot
