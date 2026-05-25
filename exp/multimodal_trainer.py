@@ -592,13 +592,35 @@ def main(args):
             # "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_CMA": DSUNetMidFS(
             #     cfg=Config_DSUnet
             # )
-            "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_CMA_SDPA": DSUNetMidFS(
+            "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_NoSTN_NoCMA": DSUNetMidFS(
                 cfg=Config_DSUnet,
-                use_sdpa=True
+                use_sdpa=False,
+                align_modality=False,
+                bott_attn=False
             ),
-            "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_CMA_CSA": DSUNetMidFS(
+            "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_CMA_SDPA_NoSTN": DSUNetMidFS(
                 cfg=Config_DSUnet,
-                use_sdpa=False
+                use_sdpa=True,
+                align_modality=False,
+                bott_attn=True
+            ),
+            "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_CMA_SDPA_STN": DSUNetMidFS(
+                cfg=Config_DSUnet,
+                use_sdpa=True,
+                align_modality=True,
+                bott_attn=True
+            ),
+            "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_CMA_CSA_NoSTN": DSUNetMidFS(
+                cfg=Config_DSUnet,
+                use_sdpa=False,
+                align_modality=False,
+                bott_attn=True
+            ),
+            "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_CMA_CSA_STN": DSUNetMidFS(
+                cfg=Config_DSUnet,
+                use_sdpa=False,
+                align_modality=True,
+                bott_attn=True
             )
         }
 

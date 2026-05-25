@@ -321,7 +321,7 @@ class SatelliteSTN(nn.Module):
 #         return self.out_conv(combined)
 
 class DSUNetMidFS(nn.Module):
-    def __init__(self, cfg, use_sdpa=False):
+    def __init__(self, cfg, use_sdpa=False, align_modality=True, bott_attn=True):
         super().__init__()
         self._cfg = cfg
         self.use_sdpa = use_sdpa
@@ -337,8 +337,14 @@ class DSUNetMidFS(nn.Module):
                               topology=topology, enable_outc=False, weak=False, encoder_only=False)
 
         bottleneck_dim = topology[-1]
-        self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=8) if use_sdpa else CrossModalCSA(in_channels=topology[-1] * 2, ratio=4)
-        self.s1_aligner = SatelliteSTN(n_s1_bands, n_s2_bands, feat_dim=topology[0])
+
+        if bott_attn:
+            self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=8) if use_sdpa else CrossModalCSA(in_channels=topology[-1] * 2, ratio=4)
+            self.bott_attn = bott_attn
+
+        if align_modality:
+            self.s1_aligner = SatelliteSTN(n_s1_bands, n_s2_bands, feat_dim=topology[0])
+            self.align_modality = align_modality
  
         skip_channels = topology + [topology[-1]]  # Add extra bottleneck channel
 
@@ -358,21 +364,24 @@ class DSUNetMidFS(nn.Module):
 
     def forward(self, s1_img, s2_img, dem, pw):
         s1_img = torch.cat([s1_img, dem, pw], dim=1)
-        s1_img = self.s1_aligner(s1_img, s2_img)
+
+        if self.align_modality:
+            s1_img = self.s1_aligner(s1_img, s2_img)
 
         s1_skips = self.s1_stream.encode(s1_img)   # [x1, x2, ..., bottleneck]
         s2_skips = self.s2_stream.encode(s2_img)
 
-        if self.use_sdpa:
-            s1_bot, s2_bot = self.bottleneck_cma(s1_skips[-1], s2_skips[-1])
-            s1_skips[-1] = s1_bot
-            s2_skips[-1] = s2_bot
-        else: 
-            fused_bot = torch.cat([s1_skips[-1], s2_skips[-1]], dim=1)
-            fused_bot = self.bottleneck_cma(fused_bot)
-            C = s1_skips[-1].shape[1]   
-            s1_skips[-1] = fused_bot[:, :C, :, :]
-            s2_skips[-1] = fused_bot[:, C:, :, :]
+        if self.bott_attn:
+            if self.use_sdpa:
+                s1_bot, s2_bot = self.bottleneck_cma(s1_skips[-1], s2_skips[-1])
+                s1_skips[-1] = s1_bot
+                s2_skips[-1] = s2_bot
+            else: 
+                fused_bot = torch.cat([s1_skips[-1], s2_skips[-1]], dim=1)
+                fused_bot = self.bottleneck_cma(fused_bot)
+                C = s1_skips[-1].shape[1]   
+                s1_skips[-1] = fused_bot[:, :C, :, :]
+                s2_skips[-1] = fused_bot[:, C:, :, :]
 
         fused_skips = [
             self.skip_fuse[i](torch.cat([s1, s2], dim=1))
