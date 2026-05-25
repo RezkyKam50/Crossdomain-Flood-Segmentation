@@ -340,6 +340,8 @@ class DSUNetMidFS(nn.Module):
         self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=8) if use_sdpa else CrossModalCSA(in_channels=topology[-1] * 2, ratio=4)
         self.s1_aligner = SatelliteSTN(n_s1_bands, n_s2_bands, feat_dim=topology[0])
  
+        skip_channels = topology + [topology[-1]]  # Add extra bottleneck channel
+
         # Each skip has shape (B, C, H, W); cat gives 2C, project back to C
         self.skip_fuse = nn.ModuleList([
             nn.Sequential(
@@ -347,7 +349,7 @@ class DSUNetMidFS(nn.Module):
                 nn.BatchNorm2d(c),
                 nn.ReLU(inplace=True)
             )
-            for c in topology  
+            for c in skip_channels
         ])
         self.shared_decoder = self.s2_stream  
 
@@ -360,9 +362,6 @@ class DSUNetMidFS(nn.Module):
 
         s1_skips = self.s1_stream.encode(s1_img)   # [x1, x2, ..., bottleneck]
         s2_skips = self.s2_stream.encode(s2_img)
- 
-        print(f"s1_skips length: {len(s1_skips)}, s2_skips length: {len(s2_skips)}")
-        print(f"skip_fuse length: {len(self.skip_fuse)}")
 
         if self.use_sdpa:
             s1_bot, s2_bot = self.bottleneck_cma(s1_skips[-1], s2_skips[-1])
