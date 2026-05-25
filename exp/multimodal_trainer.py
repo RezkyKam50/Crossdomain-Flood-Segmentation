@@ -589,8 +589,16 @@ def main(args):
             # "LateFS_WeakStrong_1x1_3x3_WeakTopology_Concat": DSUNetLateFS(
             #     cfg=Config_DSUnet
             # ),
-            "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_CMA": DSUNetMidFS(
-                cfg=Config_DSUnet
+            # "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_CMA": DSUNetMidFS(
+            #     cfg=Config_DSUnet
+            # )
+            "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_CMA_SDPA": DSUNetMidFS(
+                cfg=Config_DSUnet,
+                use_sdpa=True
+            ),
+            "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_CMA_CSA": DSUNetMidFS(
+                cfg=Config_DSUnet,
+                use_sdpa=False
             )
         }
 

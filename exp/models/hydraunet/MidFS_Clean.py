@@ -22,9 +22,9 @@ from typing import Tuple
 #         maxout = self.sharedMLP(self.max_pool(x))
 #         return F.softmax(avgout + maxout, dim=1)
 
-class ChannelSpatialAttention(nn.Module):
+class CrossModalCSA(nn.Module):
     def __init__(self, in_channels, ratio):
-        '''out ch = in ch'''
+        '''CrossModalChannel Spatial Attn'''
         super().__init__()
         self.channel_att = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
@@ -148,7 +148,7 @@ class SC(nn.Module):
 
     def forward(self, x):
         return self.norm(self.pw(self.dw(x)))
-    
+
 class FGE(nn.Module):
     def __init__(self, in_channels):
         super().__init__()
@@ -275,28 +275,81 @@ class SatelliteSTN(nn.Module):
         return s1_aligned
     
 
+# class DSUNetMidFS(nn.Module):
+#     def __init__(self, cfg):
+#         super(DSUNetMidFS, self).__init__()
+#         self._cfg = cfg
+
+#         out = cfg.MODEL.OUT_CHANNELS
+#         topology = cfg.MODEL.TOPOLOGY
+#         n_s1_bands = len(cfg.DATASET.SENTINEL1_BANDS) + 2 # dem, pw each 1ch = 2ch
+#         n_s2_bands = len(cfg.DATASET.SENTINEL2_BANDS)
+ 
+#         self.s1_stream = UNet(cfg, n_channels=n_s1_bands, n_classes=out,
+#                               topology=topology, enable_outc=False, weak=True, encoder_only=False)
+#         self.s2_stream = UNet(cfg, n_channels=n_s2_bands, n_classes=out,
+#                               topology=topology, enable_outc=False, weak=False, encoder_only=False)
+
+#         bottleneck_dim = topology[-1]
+
+#         self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=8)
+
+#         self.s1_aligner = SatelliteSTN(n_s1_bands, n_s2_bands, feat_dim=topology[0])
+
+#         self.fusion_weight = nn.Parameter(torch.ones(2, topology[0]) / 2)
+
+#         self.out_conv = OutConv(topology[0], out)
+
+#     def forward(self, s1_img, s2_img, dem, pw):
+#         s1_img = torch.cat([s1_img, dem, pw], dim=1)
+#         s1_img = self.s1_aligner(s1_img, s2_img)
+
+#         s1_skips = self.s1_stream.encode(s1_img)
+#         s2_skips = self.s2_stream.encode(s2_img)
+
+#         s1_bot, s2_bot = self.bottleneck_cma(s1_skips[-1], s2_skips[-1])
+
+#         s1_skips[-1] = s1_bot
+#         s2_skips[-1] = s2_bot
+
+#         s1_feature = self.s1_stream.decode(s1_skips)
+#         s2_feature = self.s2_stream.decode(s2_skips)
+
+#         w = torch.softmax(self.fusion_weight, dim=0)
+#         combined = (w[0].view(1, -1, 1, 1) * s1_feature) + (w[1].view(1, -1, 1, 1) * s2_feature)
+
+#         return self.out_conv(combined)
+
 class DSUNetMidFS(nn.Module):
-    def __init__(self, cfg):
-        super(DSUNetMidFS, self).__init__()
+    def __init__(self, cfg, use_sdpa=False):
+        super().__init__()
         self._cfg = cfg
+        self.use_sdpa = use_sdpa
 
         out = cfg.MODEL.OUT_CHANNELS
         topology = cfg.MODEL.TOPOLOGY
-        n_s1_bands = len(cfg.DATASET.SENTINEL1_BANDS) + 2 # dem, pw each 1ch = 2ch
+        n_s1_bands = len(cfg.DATASET.SENTINEL1_BANDS) + 2
         n_s2_bands = len(cfg.DATASET.SENTINEL2_BANDS)
- 
+
         self.s1_stream = UNet(cfg, n_channels=n_s1_bands, n_classes=out,
-                              topology=topology, enable_outc=False, weak=True)
+                              topology=topology, enable_outc=False, weak=True, encoder_only=True)
         self.s2_stream = UNet(cfg, n_channels=n_s2_bands, n_classes=out,
-                              topology=topology, enable_outc=False, weak=False)
+                              topology=topology, enable_outc=False, weak=False, encoder_only=False)
 
         bottleneck_dim = topology[-1]
-
-        self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=8)
-
+        self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=8) if use_sdpa else CrossModalCSA(in_channels=topology[-1] * 2, ratio=4)
         self.s1_aligner = SatelliteSTN(n_s1_bands, n_s2_bands, feat_dim=topology[0])
-
-        self.fusion_weight = nn.Parameter(torch.ones(2, topology[0]) / 2)
+ 
+        # Each skip has shape (B, C, H, W); cat gives 2C, project back to C
+        self.skip_fuse = nn.ModuleList([
+            nn.Sequential(
+                nn.Conv2d(c * 2, c, 1),
+                nn.BatchNorm2d(c),
+                nn.ReLU(inplace=True)
+            )
+            for c in topology  
+        ])
+        self.shared_decoder = self.s2_stream  
 
         self.out_conv = OutConv(topology[0], out)
 
@@ -304,25 +357,29 @@ class DSUNetMidFS(nn.Module):
         s1_img = torch.cat([s1_img, dem, pw], dim=1)
         s1_img = self.s1_aligner(s1_img, s2_img)
 
-        s1_skips = self.s1_stream.encode(s1_img)
+        s1_skips = self.s1_stream.encode(s1_img)   # [x1, x2, ..., bottleneck]
         s2_skips = self.s2_stream.encode(s2_img)
+ 
+        if self.use_sdpa:
+            s1_bot, s2_bot = self.bottleneck_cma(s1_skips[-1], s2_skips[-1])
+            s1_skips[-1] = s1_bot
+            s2_skips[-1] = s2_bot
+        else: 
+            fused_bot = torch.cat([s1_skips[-1], s2_skips[-1]], dim=1)
+            fused_bot = self.bottleneck_cma(fused_bot)
+            C = s1_skips[-1].shape[1]   
+            s1_skips[-1] = fused_bot[:, :C, :, :]
+            s2_skips[-1] = fused_bot[:, C:, :, :]
 
-        s1_bot, s2_bot = self.bottleneck_cma(s1_skips[-1], s2_skips[-1])
-
-        s1_skips[-1] = s1_bot
-        s2_skips[-1] = s2_bot
-
-        s1_feature = self.s1_stream.decode(s1_skips)
-        s2_feature = self.s2_stream.decode(s2_skips)
-
-        w = torch.softmax(self.fusion_weight, dim=0)
-        combined = (w[0].view(1, -1, 1, 1) * s1_feature) + (w[1].view(1, -1, 1, 1) * s2_feature)
-
-        return self.out_conv(combined)
+        fused_skips = [
+            self.skip_fuse[i](torch.cat([s1, s2], dim=1))
+            for i, (s1, s2) in enumerate(zip(s1_skips, s2_skips))
+        ]
+        feature = self.shared_decoder.decode(fused_skips)
+        return self.out_conv(feature)
 
 class UNet(nn.Module):
-
-    def __init__(self, cfg, n_channels=None, n_classes=None, topology=None, enable_outc=True, weak=None):
+    def __init__(self, cfg, n_channels=None, n_classes=None, topology=None, enable_outc=True, weak=None, encoder_only=False):
         super(UNet, self).__init__()
         self._cfg = cfg
 
@@ -332,8 +389,7 @@ class UNet(nn.Module):
 
         first_chan = topology[0]
         self.inc = InConv(n_channels, first_chan, ConvBlock if not weak else WeakConvBlock)
-        self.enable_outc = enable_outc
-        self.outc = OutConv(first_chan, n_classes)
+        self.enable_outc = enable_outc if not encoder_only else False
 
         down_topo = topology
         down_dict = OrderedDict()
@@ -349,15 +405,17 @@ class UNet(nn.Module):
             up_topo.append(out_dim)
         self.down_seq = nn.ModuleDict(down_dict)
 
-        for idx in reversed(range(n_layers)):
-            is_not_last_layer = idx != 0
-            x1_idx = idx
-            x2_idx = idx - 1 if is_not_last_layer else idx
-            in_dim = up_topo[x1_idx] * 2
-            out_dim = up_topo[x2_idx]
-            up_dict[f'up{idx + 1}'] = Up(in_dim, out_dim, ConvBlock if not weak else WeakConvBlock)
-        self.up_seq = nn.ModuleDict(up_dict)
-
+        if not encoder_only:
+            for idx in reversed(range(n_layers)):
+                is_not_last_layer = idx != 0
+                x1_idx = idx
+                x2_idx = idx - 1 if is_not_last_layer else idx
+                in_dim = up_topo[x1_idx] * 2
+                out_dim = up_topo[x2_idx]
+                up_dict[f'up{idx + 1}'] = Up(in_dim, out_dim, ConvBlock if not weak else WeakConvBlock)
+            self.up_seq = nn.ModuleDict(up_dict)
+            self.outc = OutConv(first_chan, n_classes)
+            
     def encode(self, x):
         x1 = self.inc(x)
         inputs = [x1]
