@@ -601,7 +601,7 @@ def main(args):
             "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_STN_NoSDPA": DSUNetMidFS(
                 cfg=Config_DSUnet,
                 use_sdpa=False,
-                align_modality=False,
+                align_modality=True,
                 bott_attn=False
             ),
             "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_CMA_SDPA_NoSTN": DSUNetMidFS(
