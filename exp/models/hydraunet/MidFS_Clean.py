@@ -314,7 +314,7 @@ class DSUNetMidFS(nn.Module):
         bottleneck_dim = topology[-1]
 
         if bott_attn:
-            self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=14) 
+            self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=16) 
             self.bott_attn = bott_attn
 
         if align_modality:
