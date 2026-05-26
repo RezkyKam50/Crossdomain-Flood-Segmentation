@@ -315,11 +315,11 @@ class DSUNetMidFS(nn.Module):
 
         if bott_attn:
             self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=16) 
-            self.bott_attn = bott_attn
+        self.bott_attn = bott_attn
 
         if align_modality:
             self.s1_aligner = SatelliteSTN(n_s1_bands, n_s2_bands, feat_dim=topology[0])
-            self.align_modality = align_modality
+        self.align_modality = align_modality
  
         skip_channels = topology + [topology[-1]]  # Add extra bottleneck channel
 
