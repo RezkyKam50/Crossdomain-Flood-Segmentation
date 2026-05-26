@@ -22,31 +22,6 @@ from typing import Tuple
 #         maxout = self.sharedMLP(self.max_pool(x))
 #         return F.softmax(avgout + maxout, dim=1)
 
-class CrossModalCSA(nn.Module):
-    def __init__(self, in_channels, ratio):
-        '''CrossModalChannel Spatial Attn'''
-        super().__init__()
-        self.channel_att = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            nn.Conv2d(in_channels, in_channels // ratio, 1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(in_channels // ratio, in_channels, 1),
-            nn.Sigmoid()
-        )
-
-        self.spatial_att = nn.Sequential(
-            nn.Conv2d(in_channels, 1, 1),
-            nn.Sigmoid()
-        )
-
-    def forward(self, x):
-        ca = self.channel_att(x)           # (B, C, 1, 1)
-        x = x * ca                          # apply channel attention
-        sa = self.spatial_att(x)           # (B, 1, H, W)
-        x = x * sa                          # apply spatial attention
-        return x
-
-
 class CrossModalAttention(nn.Module):
     """
     Each modality queries the other.
@@ -339,7 +314,7 @@ class DSUNetMidFS(nn.Module):
         bottleneck_dim = topology[-1]
 
         if bott_attn:
-            self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=8) if use_sdpa else CrossModalCSA(in_channels=topology[-1] * 2, ratio=4)
+            self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=14) 
             self.bott_attn = bott_attn
 
         if align_modality:
@@ -349,14 +324,15 @@ class DSUNetMidFS(nn.Module):
         skip_channels = topology + [topology[-1]]  # Add extra bottleneck channel
 
         # Each skip has shape (B, C, H, W); cat gives 2C, project back to C
-        self.skip_fuse = nn.ModuleList([
+        self.skip_fuse = nn.ModuleList([ 
             nn.Sequential(
                 nn.Conv2d(c * 2, c, 1),
                 nn.BatchNorm2d(c),
                 nn.ReLU(inplace=True)
-            )
+            ) 
             for c in skip_channels
         ])
+
         self.shared_decoder = self.s2_stream  
 
         self.out_conv = OutConv(topology[0], out)
@@ -376,12 +352,6 @@ class DSUNetMidFS(nn.Module):
                 s1_bot, s2_bot = self.bottleneck_cma(s1_skips[-1], s2_skips[-1])
                 s1_skips[-1] = s1_bot
                 s2_skips[-1] = s2_bot
-            else: 
-                fused_bot = torch.cat([s1_skips[-1], s2_skips[-1]], dim=1)
-                fused_bot = self.bottleneck_cma(fused_bot)
-                C = s1_skips[-1].shape[1]   
-                s1_skips[-1] = fused_bot[:, :C, :, :]
-                s2_skips[-1] = fused_bot[:, C:, :, :]
 
         fused_skips = [
             self.skip_fuse[i](torch.cat([s1, s2], dim=1))

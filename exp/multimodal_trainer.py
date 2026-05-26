@@ -609,18 +609,6 @@ def main(args):
                 use_sdpa=True,
                 align_modality=True,
                 bott_attn=True
-            ),
-            "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_CMA_CSA_NoSTN": DSUNetMidFS(
-                cfg=Config_DSUnet,
-                use_sdpa=False,
-                align_modality=False,
-                bott_attn=True
-            ),
-            "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_CMA_CSA_STN": DSUNetMidFS(
-                cfg=Config_DSUnet,
-                use_sdpa=False,
-                align_modality=True,
-                bott_attn=True
             )
         }
 
