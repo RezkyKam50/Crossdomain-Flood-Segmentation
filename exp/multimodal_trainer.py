@@ -10,7 +10,7 @@ from models.deeplab import DeepLabWrapper
 from models.hydraunet.UNet import UNet
 from models.hydraunet.UNetTP import UNet3Plus
 from models.hydraunet.DSUnetExp import DSUnetExp          # Dual Modality Classical UNet
-from models.hydraunet.MidFS_Clean import DSUNetMidFS
+from models.hydraunet.MidFS_Clean import DSUNetMidFS_SharedEncoder, DSUNetMidFS_SepEncoder
 from models.hydraunet.EarlyFSClean import EarlyFusionUNet
 from models.hydraunet.LateFS_Clean import DSUNetLateFS
 
@@ -592,30 +592,54 @@ def main(args):
             # "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_CMA": DSUNetMidFS(
             #     cfg=Config_DSUnet
             # )
-            "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_NoSTN_NoSDPA": DSUNetMidFS(
+            # "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_NoSTN_NoSDPA": DSUNetMidFS(
+            #     cfg=Config_DSUnet,
+            #     use_sdpa=False,
+            #     align_modality=False,
+            #     bott_attn=False
+            # ),
+            # "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_STN_NoSDPA": DSUNetMidFS(
+            #     cfg=Config_DSUnet,
+            #     use_sdpa=False,
+            #     align_modality=True,
+            #     bott_attn=False
+            # ),
+            # "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_CMA_SDPA_NoSTN": DSUNetMidFS(
+            #     cfg=Config_DSUnet,
+            #     use_sdpa=True,
+            #     align_modality=False,
+            #     bott_attn=True
+            # ),
+            # "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_GatedModal_CMA_SDPA_STN": DSUNetMidFS_SharedEncoder(
+            #     cfg=Config_DSUnet,
+            #     use_sdpa=True,
+            #     align_modality=True
+            # ),
+            "SeparateEncoder_WeakStrong_1x1_3x3_SameTopology_CMA_NoSDPA_NoSTN": DSUNetMidFS_SepEncoder(
                 cfg=Config_DSUnet,
                 use_sdpa=False,
                 align_modality=False,
-                bott_attn=False
+                weighted_fusion=False
             ),
-            "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_STN_NoSDPA": DSUNetMidFS(
-                cfg=Config_DSUnet,
-                use_sdpa=False,
-                align_modality=True,
-                bott_attn=False
-            ),
-            "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_CMA_SDPA_NoSTN": DSUNetMidFS(
+            "SeparateEncoder_WeakStrong_1x1_3x3_SameTopology_CMA_SDPA_NoSTN": DSUNetMidFS_SepEncoder(
                 cfg=Config_DSUnet,
                 use_sdpa=True,
                 align_modality=False,
-                bott_attn=True
+                weighted_fusion=False
             ),
-            "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_CMA_SDPA_STN": DSUNetMidFS(
+            "SeparateEncoder_WeakStrong_1x1_3x3_SameTopology_CMA_SDPA_STN": DSUNetMidFS_SepEncoder(
                 cfg=Config_DSUnet,
                 use_sdpa=True,
                 align_modality=True,
-                bott_attn=True
-            )
+                weighted_fusion=False
+            ),
+            "SeparateEncoder_WeakStrong_1x1_3x3_SameTopology_Gated_CMA_SDPA_STN": DSUNetMidFS_SepEncoder(
+                cfg=Config_DSUnet,
+                use_sdpa=True,
+                align_modality=True,
+                weighted_fusion=True
+            ),
+            
         }
 
         seed_results = []
