@@ -251,7 +251,7 @@ class SatelliteSTN(nn.Module):
     
 
 class DSUNetMidFS_SepEncoder(nn.Module):
-    def __init__(self, cfg, align_modality=True, bott_attn=True, weighted_fusion=True):
+    def __init__(self, cfg, align_modality=True, use_sdpa=True, weighted_fusion=True):
         super(DSUNetMidFS_SepEncoder, self).__init__()
         self._cfg = cfg
 
@@ -267,9 +267,11 @@ class DSUNetMidFS_SepEncoder(nn.Module):
 
         bottleneck_dim = topology[-1]
 
-        if bott_attn:
-            self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=8)
-        self.bott_attn = bott_attn
+        if use_sdpa:
+            self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=16)
+        else:
+            self.bottleneck_proj = nn.Conv2d(bottleneck_dim * 2, bottleneck_dim * 2, kernel_size=1)
+        self.use_sdpa = use_sdpa
 
         if align_modality:
             self.s1_aligner = SatelliteSTN(n_s1_bands, n_s2_bands, feat_dim=topology[0])
@@ -291,10 +293,14 @@ class DSUNetMidFS_SepEncoder(nn.Module):
         s1_skips = self.s1_stream.encode(s1_img)
         s2_skips = self.s2_stream.encode(s2_img)
 
-        if self.bott_attn:
+        if self.use_sdpa:
             s1_bot, s2_bot = self.bottleneck_cma(s1_skips[-1], s2_skips[-1])
             s1_skips[-1] = s1_bot
             s2_skips[-1] = s2_bot
+        else:
+            fused = torch.cat([s1_skips[-1], s2_skips[-1]], dim=1)  # (B, 2*C, H, W)
+            fused = self.bottleneck_proj(fused)                      # (B, 2*C, H, W)
+            s1_skips[-1], s2_skips[-1] = torch.chunk(fused, 2, dim=1)  # each (B, C, H, W)
 
         s1_feature = self.s1_stream.decode(s1_skips)
         s2_feature = self.s2_stream.decode(s2_skips)
