@@ -639,7 +639,6 @@ def main(args):
                 align_modality=True,
                 weighted_fusion=True
             ),
-            
         }
 
         seed_results = []
