@@ -615,30 +615,30 @@ def main(args):
             #     use_sdpa=True,
             #     align_modality=True
             # ),
-            "SeparateEncoder_WeakStrong_1x1_3x3_SameTopology_CMA_NoSDPA_NoSTN": DSUNetMidFS_SepEncoder(
+            "SeparateEncoder_WeakStrong_1x1_3x3_SameTopology_CMA_NoSDPA_STN": DSUNetMidFS_SepEncoder(
                 cfg=Config_DSUnet,
                 use_sdpa=False,
-                align_modality=False,
-                weighted_fusion=False
-            ),
-            "SeparateEncoder_WeakStrong_1x1_3x3_SameTopology_CMA_SDPA_NoSTN": DSUNetMidFS_SepEncoder(
-                cfg=Config_DSUnet,
-                use_sdpa=True,
-                align_modality=False,
-                weighted_fusion=False
-            ),
-            "SeparateEncoder_WeakStrong_1x1_3x3_SameTopology_CMA_SDPA_STN": DSUNetMidFS_SepEncoder(
-                cfg=Config_DSUnet,
-                use_sdpa=True,
                 align_modality=True,
                 weighted_fusion=False
             ),
-            "SeparateEncoder_WeakStrong_1x1_3x3_SameTopology_Gated_CMA_SDPA_STN": DSUNetMidFS_SepEncoder(
-                cfg=Config_DSUnet,
-                use_sdpa=True,
-                align_modality=True,
-                weighted_fusion=True
-            ),
+            # "SeparateEncoder_WeakStrong_1x1_3x3_SameTopology_CMA_SDPA_NoSTN": DSUNetMidFS_SepEncoder(
+            #     cfg=Config_DSUnet,
+            #     use_sdpa=True,
+            #     align_modality=False,
+            #     weighted_fusion=False
+            # ),
+            # "SeparateEncoder_WeakStrong_1x1_3x3_SameTopology_CMA_SDPA_STN": DSUNetMidFS_SepEncoder(
+            #     cfg=Config_DSUnet,
+            #     use_sdpa=True,
+            #     align_modality=True,
+            #     weighted_fusion=False
+            # ),
+            # "SeparateEncoder_WeakStrong_1x1_3x3_SameTopology_Gated_CMA_SDPA_STN": DSUNetMidFS_SepEncoder(
+            #     cfg=Config_DSUnet,
+            #     use_sdpa=True,
+            #     align_modality=True,
+            #     weighted_fusion=True
+            # ),
         }
 
         seed_results = []
