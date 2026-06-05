@@ -227,17 +227,15 @@ class SatelliteSTN(nn.Module):
         )
 
     def forward(self, s1, s2):
-        s1_enh = self.fge_s1(self.s1_proj(s1))
-        s2_enh = self.fge_s2(self.s2_proj(s2))
 
-        fused = torch.cat([s1_enh, s2_enh], dim=1)
+        fused = torch.cat([s1, s2], dim=1)
         theta = self.coarse_loc(fused).view(-1, 2, 3)
         grid_c = F.affine_grid(theta, s1.size(), align_corners=False)
         s1_coarse = F.grid_sample(s1, grid_c, align_corners=False,
                                    padding_mode='reflection')
 
         s1_coarse_enh = self.fge_s1(self.s1_proj(s1_coarse))
-        fused2 = torch.cat([s1_coarse_enh, s2_enh], dim=1)
+        fused2 = torch.cat([s1_coarse_enh, s2], dim=1)
         flow = self.fine_loc(fused2) * 0.1
 
         B, _, H, W = s1.shape
@@ -533,7 +531,7 @@ class Down(nn.Module):
     def __init__(self, in_ch, out_ch, conv_block, blurpool=True):
         super(Down, self).__init__()
         self.mpconv = nn.Sequential(
-            nn.MaxPool2d(2) if not blurpool else BlurPoolV2(in_ch, "reflect", 4, 2),
+            nn.MaxPool2d(2) if not blurpool else BlurPoolV2(in_ch, "reflect", 2, 2),
             conv_block(in_ch, out_ch)
         )
 
