@@ -550,94 +550,12 @@ def main(args):
         bolivia_loader = get_loader_MM(args.data_path, DatasetType.BOLIVIA.value, args)
     
         models = {
-            # "UNet": UNet(
-            #     in_channels=6,
-            #     out_channels=2,
-            #     unet_encoder_size=768
-            # )
-            # "DSUnet_EarlyFS": DSUNet(
-            #     cfg=Config_DSUnet,
-            #     use_prithvi=False,
-            #     use_cm_attn=None,
-            #     fusion_scheme="early",
-            #     bottleneck_dropout_prob=None
-            # ),
-            # "DSUnet_MiddleFS": DSUNet(
-            #     cfg=Config_DSUnet,
-            #     use_prithvi=False,
-            #     use_cm_attn=None,
-            #     fusion_scheme="middle",
-            #     bottleneck_dropout_prob=None
-            # ),
-            # "DSUnet_LateFS": DSUNet(
-            #     cfg=Config_DSUnet,
-            #     use_prithvi=False,
-            #     use_cm_attn=None,
-            #     fusion_scheme="late",
-            #     bottleneck_dropout_prob=None
-            # )
-            # "DSUNet_CoordEnd": DSUnetExp(
-            #     cfg=Config_DSUnet,
-            #     use_prithvi=False,
-            #     skip_attn_scheme=None,
-            #     end_attn_scheme="COORD",
-            #     sep_end_attn=False
-            # )
-            # "EarlyFS_S1S2DEMPW_NoAttn": EarlyFusionUNet(
-            #     cfg=Config_DSUnet
-            # ),
-            # "LateFS_WeakStrong_1x1_3x3_WeakTopology_Concat": DSUNetLateFS(
-            #     cfg=Config_DSUnet
-            # ),
-            # "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_CMA": DSUNetMidFS(
-            #     cfg=Config_DSUnet
-            # )
-            # "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_NoSTN_NoSDPA": DSUNetMidFS(
+            # "SeparateEncoder_WeakStrong_1x1_3x3_SameTopology_Blurpool": DSUNetMidFS_SepEncoder(
             #     cfg=Config_DSUnet,
             #     use_sdpa=False,
             #     align_modality=False,
-            #     bott_attn=False
-            # ),
-            # "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_STN_NoSDPA": DSUNetMidFS(
-            #     cfg=Config_DSUnet,
-            #     use_sdpa=False,
-            #     align_modality=True,
-            #     bott_attn=False
-            # ),
-            # "MidFS_WeakStrong_1x1_3x3_SameTopology_GatedModal_CMA_SDPA_NoSTN": DSUNetMidFS(
-            #     cfg=Config_DSUnet,
-            #     use_sdpa=True,
-            #     align_modality=False,
-            #     bott_attn=True
-            # ),
-            # "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_GatedModal_CMA_SDPA_STN": DSUNetMidFS_SharedEncoder(
-            #     cfg=Config_DSUnet,
-            #     use_sdpa=True,
-            #     align_modality=True
-            # ),
-            # "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_SDPA_STN_BlurPool": DSUNetMidFS_SharedEncoder(
-            #     cfg=Config_DSUnet,
-            #     use_sdpa=True,
-            #     align_modality=True,
-            # ),
-            # "SeparateEncoder_WeakStrong_1x1_3x3_SameTopology_CMA_SDPA_NoSTN": DSUNetMidFS_SepEncoder(
-            #     cfg=Config_DSUnet,
-            #     use_sdpa=True,
-            #     align_modality=False,
             #     weighted_fusion=False
             # ),
-            # "SeparateEncoder_WeakStrong_1x1_3x3_SameTopology_CMA_SDPA_STN": DSUNetMidFS_SepEncoder(
-            #     cfg=Config_DSUnet,
-            #     use_sdpa=True,
-            #     align_modality=True,
-            #     weighted_fusion=False
-            # ),
-            "SeparateEncoder_WeakStrong_1x1_3x3_SameTopology_Blurpool": DSUNetMidFS_SepEncoder(
-                cfg=Config_DSUnet,
-                use_sdpa=False,
-                align_modality=False,
-                weighted_fusion=False
-            ),
             "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_Blurpool_STN": DSUNetMidFS_SharedEncoder(
                 cfg=Config_DSUnet,
                 use_sdpa=True,

@@ -39,7 +39,6 @@ class CrossModalAttention(nn.Module):
         self.attn_1to2 = nn.MultiheadAttention(dim, num_heads, batch_first=True)
         self.attn_2to1 = nn.MultiheadAttention(dim, num_heads, batch_first=True)
 
-
     def _flatten(self, x: Tensor) -> Tensor:
         # (B, C, H, W) -> (B, H*W, C)
         B, C, H, W = x.shape
@@ -59,13 +58,13 @@ class CrossModalAttention(nn.Module):
         kv1 = self._flatten(self.norm1(x1))
 
         # S1 queries S2
-        out1, _ = self.attn_1to2(q1, kv2, kv2)
+        out1, _ = self.attn_1to2(q1, kv2, kv2) 
         # S2 queries S1
         out2, _ = self.attn_2to1(q2, kv1, kv1)
 
         return (
-            x1 + self._restore(out1, shape1),
-            x2 + self._restore(out2, shape2),
+            x1 + self._restore(out1, shape1), # residual sum
+            x2 + self._restore(out2, shape2), # residual sum
         )
 
 class GradientFilter(nn.Module):
@@ -401,7 +400,6 @@ class DSUNetMidFS_SharedEncoder(nn.Module):
         self.shared_decoder = self.s2_stream  
 
         self.out_conv = OutConv(topology[0], out)
-
 
     def forward(self, s1_img, s2_img, dem, pw):
         s1_img = torch.cat([s1_img, dem, pw], dim=1)
