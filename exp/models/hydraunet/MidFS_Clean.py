@@ -195,12 +195,12 @@ class FGE(nn.Module):
 
 
 class SatelliteSTN(nn.Module):
-    def __init__(self, s1_channels, s2_channels, feat_dim):
+    def __init__(self, s1_channels, s2_channels, feat_dim, fge=True):
         super().__init__()
         '''Predicts x,y shifts, resamples pixels'''
         self.s1_proj = nn.Sequential(nn.Conv2d(s1_channels, feat_dim, 1), nn.ReLU())
         self.s2_proj = nn.Sequential(nn.Conv2d(s2_channels, feat_dim, 1), nn.ReLU())
-
+        self.fge = fge
         self.fge_s1 = FGE(feat_dim)
         self.fge_s2 = FGE(feat_dim)
 
@@ -226,18 +226,20 @@ class SatelliteSTN(nn.Module):
         )
 
     def forward(self, s1, s2):
-        s1_feat = self.s1_proj(s1)  # (B, feat_dim, H, W)
-        s2_feat = self.s2_proj(s2)  # (B, feat_dim, H, W)
+        s1_feat = self.s1_proj(s1)
+        s2_feat = self.s2_proj(s2)
 
-        fused = torch.cat([s1_feat, s2_feat], dim=1)  # (B, feat_dim*2, H, W) ✓
+        fused = torch.cat([s1_feat, s2_feat], dim=1)
         theta = self.coarse_loc(fused).view(-1, 2, 3)
         grid_c = F.affine_grid(theta, s1.size(), align_corners=False)
-        s1_coarse = F.grid_sample(s1, grid_c, align_corners=False,
-                                padding_mode='reflection')
+        s1_coarse = F.grid_sample(s1, grid_c, align_corners=False, padding_mode='reflection')
 
-        s1_coarse_enh = self.fge_s1(self.s1_proj(s1_coarse))
-        s2_feat2 = self.fge_s2(s2_feat)  # reuse already-projected s2
-        fused2 = torch.cat([s1_coarse_enh, s2_feat2], dim=1)
+        s1_coarse_feat = self.s1_proj(s1_coarse)
+        if self.fge:
+            s1_coarse_feat = self.fge_s1(s1_coarse_feat)
+            s2_feat = self.fge_s2(s2_feat)
+
+        fused2 = torch.cat([s1_coarse_feat, s2_feat], dim=1)
         flow = self.fine_loc(fused2) * 0.1
 
         B, _, H, W = s1.shape
@@ -245,8 +247,7 @@ class SatelliteSTN(nn.Module):
             torch.eye(2, 3, device=s1.device).unsqueeze(0).expand(B, -1, -1),
             s1.size(), align_corners=False)
         grid_f = base + flow.permute(0, 2, 3, 1)
-        s1_aligned = F.grid_sample(s1_coarse, grid_f, align_corners=False,
-                                    padding_mode='reflection')
+        s1_aligned = F.grid_sample(s1_coarse, grid_f, align_corners=False, padding_mode='reflection')
 
         return s1_aligned
 
@@ -365,7 +366,7 @@ class BlurPoolV2(nn.Module):
 #         return self.out_conv(combined)
 
 class DSUNetMidFS_SharedEncoder(nn.Module):
-    def __init__(self, cfg, use_sdpa=False, align_modality=True):
+    def __init__(self, cfg, use_sdpa=False, align_modality=True, fge=True):
         super().__init__()
         self._cfg = cfg
         self.use_sdpa = use_sdpa
@@ -386,7 +387,7 @@ class DSUNetMidFS_SharedEncoder(nn.Module):
             self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=16) 
 
         if align_modality:
-            self.s1_aligner = SatelliteSTN(n_s1_bands, n_s2_bands, feat_dim=topology[0])
+            self.s1_aligner = SatelliteSTN(n_s1_bands, n_s2_bands, feat_dim=topology[0], fge=fge)
         self.align_modality = align_modality
  
         skip_channels = topology + [topology[-1]]  # Add extra bottleneck channel
