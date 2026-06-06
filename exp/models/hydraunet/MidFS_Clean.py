@@ -227,7 +227,6 @@ class SatelliteSTN(nn.Module):
         )
 
     def forward(self, s1, s2):
-
         fused = torch.cat([s1, s2], dim=1)
         theta = self.coarse_loc(fused).view(-1, 2, 3)
         grid_c = F.affine_grid(theta, s1.size(), align_corners=False)
