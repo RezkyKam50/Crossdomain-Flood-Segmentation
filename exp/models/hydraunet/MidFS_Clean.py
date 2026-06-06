@@ -226,14 +226,18 @@ class SatelliteSTN(nn.Module):
         )
 
     def forward(self, s1, s2):
-        fused = torch.cat([s1, s2], dim=1)
+        s1_feat = self.s1_proj(s1)  # (B, feat_dim, H, W)
+        s2_feat = self.s2_proj(s2)  # (B, feat_dim, H, W)
+
+        fused = torch.cat([s1_feat, s2_feat], dim=1)  # (B, feat_dim*2, H, W) ✓
         theta = self.coarse_loc(fused).view(-1, 2, 3)
         grid_c = F.affine_grid(theta, s1.size(), align_corners=False)
         s1_coarse = F.grid_sample(s1, grid_c, align_corners=False,
-                                   padding_mode='reflection')
+                                padding_mode='reflection')
 
         s1_coarse_enh = self.fge_s1(self.s1_proj(s1_coarse))
-        fused2 = torch.cat([s1_coarse_enh, s2], dim=1)
+        s2_feat2 = self.fge_s2(s2_feat)  # reuse already-projected s2
+        fused2 = torch.cat([s1_coarse_enh, s2_feat2], dim=1)
         flow = self.fine_loc(fused2) * 0.1
 
         B, _, H, W = s1.shape
