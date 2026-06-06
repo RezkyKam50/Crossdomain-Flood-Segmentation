@@ -10,7 +10,7 @@ from models.deeplab import DeepLabWrapper
 from models.hydraunet.UNet import UNet
 from models.hydraunet.UNetTP import UNet3Plus
 from models.hydraunet.DSUnetExp import DSUnetExp          # Dual Modality Classical UNet
-from models.hydraunet.MidFS_Clean import DSUNetMidFS_SharedEncoder, DSUNetMidFS_SepEncoder
+from models.hydraunet.MidFS_Clean import DSUNetMidFS_SharedEncoder
 from models.hydraunet.EarlyFSClean import EarlyFusionUNet
 from models.hydraunet.LateFS_Clean import DSUNetLateFS
 
