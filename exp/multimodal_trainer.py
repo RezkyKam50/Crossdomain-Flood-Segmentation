@@ -556,13 +556,13 @@ def main(args):
             #     align_modality=False,
             #     weighted_fusion=False
             # ),
-            "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_Blurpool_STNFGE": DSUNetMidFS_SharedEncoder(
+            "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_STNFGE": DSUNetMidFS_SharedEncoder(
                 cfg=Config_DSUnet,
                 use_sdpa=True,
                 align_modality=True,
                 fge=True
             ),
-            "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_Blurpool_STNNoFGE": DSUNetMidFS_SharedEncoder(
+            "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_STNNoFGE": DSUNetMidFS_SharedEncoder(
                 cfg=Config_DSUnet,
                 use_sdpa=True,
                 align_modality=True,

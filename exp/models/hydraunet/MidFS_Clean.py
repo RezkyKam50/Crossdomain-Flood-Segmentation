@@ -50,7 +50,7 @@ class CrossModalAttention(nn.Module):
         return x_flat.permute(0, 2, 1).view(B, C, H, W)
 
     def forward(self, x1: Tensor, x2: Tensor) -> Tuple[Tensor, Tensor]:
-        shape1, shape2 = x1.shape, x2.shape
+        shape1, shape2 = x1.shape, x2.shape  # B, 1024, 3, 3
 
         q1 = self._flatten(self.norm1(x1))
         kv2 = self._flatten(self.norm2(x2))
@@ -63,7 +63,7 @@ class CrossModalAttention(nn.Module):
         out2, _ = self.attn_2to1(q2, kv1, kv1)
 
         return (
-            x1 + self._restore(out1, shape1), # residual sum
+            x1 + self._restore(out1, shape1), # residual sum > B, 1024, 3, 3 
             x2 + self._restore(out2, shape2), # residual sum
         )
 
@@ -528,10 +528,10 @@ class OutConv(nn.Module):
 
 
 class Down(nn.Module):
-    def __init__(self, in_ch, out_ch, conv_block, blurpool=True):
+    def __init__(self, in_ch, out_ch, conv_block, blurpool=False):
         super(Down, self).__init__()
         self.mpconv = nn.Sequential(
-            nn.MaxPool2d(2) if not blurpool else BlurPoolV2(in_ch, "reflect", 2, 2),
+            nn.MaxPool2d(2) if not blurpool else BlurPoolV2(in_ch, "reflect", 3, 2),
             conv_block(in_ch, out_ch)
         )
 
