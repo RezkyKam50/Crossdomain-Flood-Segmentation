@@ -201,8 +201,9 @@ class SatelliteSTN(nn.Module):
         self.s1_proj = nn.Sequential(nn.Conv2d(s1_channels, feat_dim, 1), nn.ReLU())
         self.s2_proj = nn.Sequential(nn.Conv2d(s2_channels, feat_dim, 1), nn.ReLU())
         self.fge = fge
-        self.fge_s1 = FGE(feat_dim)
-        self.fge_s2 = FGE(feat_dim)
+        if fge:
+            self.fge_s1 = FGE(feat_dim)
+            self.fge_s2 = FGE(feat_dim)
 
         fused_ch = feat_dim * 2
 
@@ -228,6 +229,9 @@ class SatelliteSTN(nn.Module):
     def forward(self, s1, s2):
         s1_feat = self.s1_proj(s1)
         s2_feat = self.s2_proj(s2)
+        if self.fge:
+            s1_feat = self.fge_s1(s1_feat)
+            s2_feat = self.fge_s2(s2_feat)
 
         fused = torch.cat([s1_feat, s2_feat], dim=1)
         theta = self.coarse_loc(fused).view(-1, 2, 3)
@@ -235,10 +239,6 @@ class SatelliteSTN(nn.Module):
         s1_coarse = F.grid_sample(s1, grid_c, align_corners=False, padding_mode='reflection')
 
         s1_coarse_feat = self.s1_proj(s1_coarse)
-        if self.fge:
-            s1_coarse_feat = self.fge_s1(s1_coarse_feat)
-            s2_feat = self.fge_s2(s2_feat)
-
         fused2 = torch.cat([s1_coarse_feat, s2_feat], dim=1)
         flow = self.fine_loc(fused2) * 0.1
 
