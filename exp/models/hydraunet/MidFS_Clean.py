@@ -103,6 +103,91 @@ class GradientFilter(nn.Module):
         fused = self.norm(fused)
         return fused
  
+
+class SRU(nn.Module):
+    def __init__(
+            self,
+            channels: int,
+            group_num: int = 4,
+            gate_threshold: float = 0.5,
+    ):
+        super(SRU, self).__init__()
+        self.gn = nn.GroupNorm(group_num, channels)
+        self.gate_threshold = gate_threshold
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x: torch.Tensor):
+        gn_x = self.gn(x)
+        w = (self.gn.weight / torch.sum(self.gn.weight)).view(1, -1, 1, 1)
+        w = self.sigmoid(w * gn_x)
+        infor_mask = w >= self.gate_threshold
+        less_infor_maks = w < self.gate_threshold
+        x1 = infor_mask * gn_x
+        x2 = less_infor_maks * gn_x
+        x11, x12 = torch.split(x1, x1.size(1) // 2, dim=1)
+        x21, x22 = torch.split(x2, x2.size(1) // 2, dim=1)
+        out = torch.cat([x11 + x22, x12 + x21], dim=1)
+        return out
+
+
+class CRU(nn.Module):
+    def __init__(
+            self,
+            channels: int,
+            alpha: float = 0.5,
+            squeeze_ratio: int = 2,
+            groups: int = 2,
+            stride: int = 1,
+    ):
+        super(CRU, self).__init__()
+        self.upper_channel = int(channels * alpha)
+        self.low_channel = channels - self.upper_channel
+        s_up_c, s_low_c = self.upper_channel // squeeze_ratio, self.low_channel // squeeze_ratio
+        self.squeeze_up = nn.Conv2d(self.upper_channel, s_up_c, 1, stride=stride, bias=False)
+        self.squeeze_low = nn.Conv2d(self.low_channel, s_low_c, 1, stride=stride, bias=False)
+        
+        self.gwc = nn.Conv2d(s_up_c, channels, 3, stride=1, padding=1, groups=groups)
+        self.pwc1 = nn.Conv2d(s_up_c, channels, 1, bias=False)
+
+        self.pwc2 = nn.Conv2d(s_low_c, channels - s_low_c, 1, bias=False)
+        self.gap = nn.AdaptiveAvgPool2d((1, 1))
+
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, x: torch.Tensor):
+        up, low = torch.split(x, [self.upper_channel, self.low_channel], dim=1)
+        up, low = self.squeeze_up(up), self.squeeze_low(low)
+
+        y1 = self.gwc(up) + self.pwc1(up)
+        y2 = torch.cat((low, self.pwc2(low)), dim=1)
+
+        out = torch.cat((y1, y2), dim=1)
+        out_s = self.softmax(self.gap(out))
+        out = out * out_s
+        out1, out2 = torch.split(out, out.size(1) // 2, dim=1)
+
+        return out1 + out2
+
+class SC_SOMA(nn.Module):
+    def __init__(
+            self,
+            channels: int,
+            group_num: int = 4,
+            gate_threshold: int = 0.5,
+            alpha: float = 0.5,
+            squeeze_ratio: int = 2,
+            groups: int = 2,
+            stride: int = 1,
+    ):
+        super(SC_SOMA, self).__init__()
+        self.sru = SRU(channels, group_num, gate_threshold)
+        self.cru = CRU(channels, alpha, squeeze_ratio, groups, stride)
+
+    def forward(self, x: torch.Tensor):
+        x = self.sru(x)
+        x = self.cru(x)
+        return x
+
 class SC(nn.Module):
     def __init__(self, channels):
         super().__init__()
@@ -114,13 +199,13 @@ class SC(nn.Module):
         return self.norm(self.pw(self.dw(x)))
 
 class FGE(nn.Module):
-    def __init__(self, in_channels):
+    def __init__(self, in_channels, sc_soma=False):
         super().__init__()
         self.in_channels = in_channels
 
         self.sc = nn.Sequential(
             nn.Conv2d(in_channels, in_channels, kernel_size=1),
-            SC(in_channels),
+            SC(in_channels) if not sc_soma else SC_SOMA(in_channels),
             nn.Conv2d(in_channels, in_channels, kernel_size=1)
         )
 
@@ -184,15 +269,15 @@ class FGE(nn.Module):
 
 
 class SatelliteSTN(nn.Module):
-    def __init__(self, s1_channels, s2_channels, feat_dim, fge=True):
+    def __init__(self, s1_channels, s2_channels, feat_dim, fge=True, sc_soma=False):
         super().__init__()
         '''Predicts x,y shifts, resamples pixels'''
         self.s1_proj = nn.Sequential(nn.Conv2d(s1_channels, feat_dim, 1), nn.ReLU())
         self.s2_proj = nn.Sequential(nn.Conv2d(s2_channels, feat_dim, 1), nn.ReLU())
         self.fge = fge
         if fge:
-            self.fge_s1 = FGE(feat_dim)
-            self.fge_s2 = FGE(feat_dim)
+            self.fge_s1 = FGE(feat_dim, sc_soma)
+            self.fge_s2 = FGE(feat_dim, sc_soma)
 
         fused_ch = feat_dim * 2
 
@@ -359,7 +444,7 @@ class BlurPoolV2(nn.Module):
 #         return self.out_conv(combined)
 
 class DSUNetMidFS_SharedEncoder(nn.Module):
-    def __init__(self, cfg, use_sdpa=False, align_modality=True, fge=True):
+    def __init__(self, cfg, use_sdpa=False, align_modality=True, fge=True, sc_soma=False):
         super().__init__()
         self._cfg = cfg
         self.use_sdpa = use_sdpa
@@ -380,7 +465,7 @@ class DSUNetMidFS_SharedEncoder(nn.Module):
             self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=16) 
 
         if align_modality:
-            self.s1_aligner = SatelliteSTN(n_s1_bands, n_s2_bands, feat_dim=topology[0], fge=fge)
+            self.s1_aligner = SatelliteSTN(n_s1_bands, n_s2_bands, feat_dim=topology[0], fge=fge, sc_soma=sc_soma)
         self.align_modality = align_modality
  
         skip_channels = topology + [topology[-1]]  # Add extra bottleneck channel

@@ -560,13 +560,22 @@ def main(args):
                 cfg=Config_DSUnet,
                 use_sdpa=True,
                 align_modality=True,
-                fge=True
+                fge=True,
+                sc_soma=False
+            ),
+            "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_STNFGE_SCSOMA": DSUNetMidFS_SharedEncoder(
+                cfg=Config_DSUnet,
+                use_sdpa=True,
+                align_modality=True,
+                fge=True,
+                sc_soma=True
             ),
             "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_STNNoFGE": DSUNetMidFS_SharedEncoder(
                 cfg=Config_DSUnet,
                 use_sdpa=True,
                 align_modality=True,
-                fge=False
+                fge=False,
+                sc_soma=False
             ),
         }
 
