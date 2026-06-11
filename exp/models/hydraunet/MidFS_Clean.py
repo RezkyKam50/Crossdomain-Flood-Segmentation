@@ -24,18 +24,10 @@ from typing import Tuple
 #         return F.softmax(avgout + maxout, dim=1)
 
 class CrossModalAttention(nn.Module):
-    """
-    Each modality queries the other.
-    x1 (query) attends to x2 (key/value) -> out1 = x1 + cross_attn(x1, x2)
-    x2 (query) attends to x1 (key/value) -> out2 = x2 + cross_attn(x2, x1)
-
-    since s1 stream has dem & pw, we need the long range dependency.
-    """
     def __init__(self, dim: int, num_heads: int = 8):
         super().__init__()
         self.norm1 = nn.GroupNorm(1, dim)
         self.norm2 = nn.GroupNorm(1, dim)
-        # shared attention for both directions
         self.attn_1to2 = nn.MultiheadAttention(dim, num_heads, batch_first=True)
         self.attn_2to1 = nn.MultiheadAttention(dim, num_heads, batch_first=True)
 
@@ -56,10 +48,7 @@ class CrossModalAttention(nn.Module):
         kv2 = self._flatten(self.norm2(x2))
         q2 = self._flatten(self.norm2(x2))
         kv1 = self._flatten(self.norm1(x1))
-
-        # S1 queries S2
         out1, _ = self.attn_1to2(q1, kv2, kv2) 
-        # S2 queries S1
         out2, _ = self.attn_2to1(q2, kv1, kv1)
 
         return (
@@ -238,7 +227,11 @@ class SatelliteSTN(nn.Module):
         grid_c = F.affine_grid(theta, s1.size(), align_corners=False)
         s1_coarse = F.grid_sample(s1, grid_c, align_corners=False, padding_mode='reflection')
 
-        s1_coarse_feat = self.s1_proj(s1_coarse)
+        if self.fge:
+            s1_coarse_feat = self.fge_s1(self.s1_proj(s1_coarse))
+        else:
+            s1_coarse_feat = self.s1_proj(s1_coarse)
+
         fused2 = torch.cat([s1_coarse_feat, s2_feat], dim=1)
         flow = self.fine_loc(fused2) * 0.1
 
