@@ -269,7 +269,15 @@ class FGE(nn.Module):
 
 
 class SatelliteSTN(nn.Module):
-    def __init__(self, s1_channels, s2_channels, feat_dim, fge=True, sc_soma=False):
+    def __init__(
+            self, 
+            s1_channels, 
+            s2_channels, 
+            feat_dim, 
+            fge=True, 
+            sc_soma=False,
+            fine_loc_opt=True
+            ):
         super().__init__()
         '''Predicts x,y shifts, resamples pixels'''
         self.s1_proj = nn.Sequential(nn.Conv2d(s1_channels, feat_dim, 1), nn.ReLU())
@@ -293,12 +301,14 @@ class SatelliteSTN(nn.Module):
         self.coarse_loc[-1].bias.data.copy_(
             torch.tensor([1, 0, 0, 0, 1, 0], dtype=torch.float))
 
-        self.fine_loc = nn.Sequential(
-            nn.Conv2d(fused_ch, 64, 3, padding=1), nn.ReLU(),
-            nn.Conv2d(64, 64, 3, padding=1), nn.ReLU(),
-            nn.Conv2d(64, 2, 3, padding=1),
-            nn.Tanh()
-        )
+        self.fine_loc_opt = fine_loc_opt
+        if fine_loc_opt:
+            self.fine_loc = nn.Sequential(
+                nn.Conv2d(fused_ch, 64, 3, padding=1), nn.ReLU(),
+                nn.Conv2d(64, 64, 3, padding=1), nn.ReLU(),
+                nn.Conv2d(64, 2, 3, padding=1),
+                nn.Tanh()
+            )
 
     def forward(self, s1, s2):
         s1_feat = self.s1_proj(s1)
@@ -317,17 +327,17 @@ class SatelliteSTN(nn.Module):
         else:
             s1_coarse_feat = self.s1_proj(s1_coarse)
 
-        fused2 = torch.cat([s1_coarse_feat, s2_feat], dim=1)
-        flow = self.fine_loc(fused2) * 0.1
+        if self.fine_loc_opt:
+            fused2 = torch.cat([s1_coarse_feat, s2_feat], dim=1)
+            flow = self.fine_loc(fused2) * 0.1
+            B, _, H, W = s1.shape
+            base = F.affine_grid(torch.eye(2, 3, device=s1.device).unsqueeze(0).expand(B, -1, -1), s1.size(), align_corners=False)
+            grid_f = base + flow.permute(0, 2, 3, 1)
+            s1_aligned = F.grid_sample(s1_coarse, grid_f, align_corners=False, padding_mode='reflection')
 
-        B, _, H, W = s1.shape
-        base = F.affine_grid(
-            torch.eye(2, 3, device=s1.device).unsqueeze(0).expand(B, -1, -1),
-            s1.size(), align_corners=False)
-        grid_f = base + flow.permute(0, 2, 3, 1)
-        s1_aligned = F.grid_sample(s1_coarse, grid_f, align_corners=False, padding_mode='reflection')
-
-        return s1_aligned
+            return s1_aligned
+        else:
+            return s1_coarse_feat
 
 class BlurPoolV2(nn.Module):
     def __init__(self, channels, pad_type='reflect', filt_size=4, stride=2, pad_off=0):
@@ -444,7 +454,7 @@ class BlurPoolV2(nn.Module):
 #         return self.out_conv(combined)
 
 class DSUNetMidFS_SharedEncoder(nn.Module):
-    def __init__(self, cfg, use_sdpa=False, align_modality=True, fge=True, sc_soma=False):
+    def __init__(self, cfg, use_sdpa=False, align_modality=True, fge=True, sc_soma=False, fine_loc_opt=True):
         super().__init__()
         self._cfg = cfg
         self.use_sdpa = use_sdpa
@@ -465,7 +475,7 @@ class DSUNetMidFS_SharedEncoder(nn.Module):
             self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=16) 
 
         if align_modality:
-            self.s1_aligner = SatelliteSTN(n_s1_bands, n_s2_bands, feat_dim=topology[0], fge=fge, sc_soma=sc_soma)
+            self.s1_aligner = SatelliteSTN(n_s1_bands, n_s2_bands, feat_dim=topology[0], fge=fge, sc_soma=sc_soma, fine_loc_opt=fine_loc_opt)
         self.align_modality = align_modality
  
         skip_channels = topology + [topology[-1]]  # Add extra bottleneck channel
@@ -618,9 +628,9 @@ class Down(nn.Module):
 
 
 class Up(nn.Module):
-    def __init__(self, in_ch, out_ch, conv_block):
+    def __init__(self, in_ch, out_ch, conv_block, static_upsample=False):
         super(Up, self).__init__()
-        self.up = nn.ConvTranspose2d(in_ch // 2, in_ch // 2, 2, stride=2)
+        self.up = nn.ConvTranspose2d(in_ch // 2, in_ch // 2, 2, stride=2) if not static_upsample else nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         self.conv = conv_block(in_ch, out_ch)
 
     def forward(self, x1, x2):
