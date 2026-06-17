@@ -61,7 +61,12 @@ class GradientFilter(nn.Module):
         super().__init__()
         self.num_directions = num_directions
         self.branches = nn.ModuleList()
-        angles = [0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5][:num_directions] 
+        angles = [
+                0   , 22.5, 
+                45  , 67.5, 
+                90  , 112.5, 
+                135 , 157.5
+            ][:num_directions] 
         for angle in angles:
             branch = nn.Conv2d(in_channels, branch_channels, kernel_size=kernel_size, padding=kernel_size//2, bias=False)
             weight = self.get_rotated_sobel_kernel(angle, in_channels, branch_channels, kernel_size)
@@ -454,7 +459,7 @@ class BlurPoolV2(nn.Module):
 #         return self.out_conv(combined)
 
 class DSUNetMidFS_SharedEncoder(nn.Module):
-    def __init__(self, cfg, use_sdpa=False, align_modality=True, fge=True, sc_soma=False, fine_loc_opt=True):
+    def __init__(self, cfg, use_sdpa=False, align_modality=True, fge=True, sc_soma=False, fine_loc_opt=True, attn_heads=16):
         super().__init__()
         self._cfg = cfg
         self.use_sdpa = use_sdpa
@@ -472,7 +477,7 @@ class DSUNetMidFS_SharedEncoder(nn.Module):
         bottleneck_dim = topology[-1]
 
         if use_sdpa:
-            self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=16) 
+            self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=attn_heads) 
 
         if align_modality:
             self.s1_aligner = SatelliteSTN(n_s1_bands, n_s2_bands, feat_dim=topology[0], fge=fge, sc_soma=sc_soma, fine_loc_opt=fine_loc_opt)

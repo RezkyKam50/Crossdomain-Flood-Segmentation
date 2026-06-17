@@ -562,7 +562,8 @@ def main(args):
                 align_modality=True,
                 fge=True,
                 sc_soma=False,
-                fine_loc_opt=True
+                fine_loc_opt=True,
+                attn_heads=16
             ),
             "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_STN_NoFineLoc": DSUNetMidFS_SharedEncoder(
                 cfg=Config_DSUnet,
@@ -570,7 +571,8 @@ def main(args):
                 align_modality=True,
                 fge=True,
                 sc_soma=False,
-                fine_loc_opt=False
+                fine_loc_opt=False,
+                attn_heads=16
             ),
         }
 
