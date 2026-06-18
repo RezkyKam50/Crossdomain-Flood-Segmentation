@@ -327,22 +327,20 @@ class SatelliteSTN(nn.Module):
         grid_c = F.affine_grid(theta, s1.size(), align_corners=False)
         s1_coarse = F.grid_sample(s1, grid_c, align_corners=False, padding_mode='reflection')
 
-        if self.fge:
-            s1_coarse_feat = self.fge_s1(self.s1_proj(s1_coarse))
-        else:
-            s1_coarse_feat = self.s1_proj(s1_coarse)
-
         if self.fine_loc_opt:
+            if self.fge:
+                s1_coarse_feat = self.fge_s1(self.s1_proj(s1_coarse))
+            else:
+                s1_coarse_feat = self.s1_proj(s1_coarse)
+
             fused2 = torch.cat([s1_coarse_feat, s2_feat], dim=1)
             flow = self.fine_loc(fused2) * 0.1
             B, _, H, W = s1.shape
             base = F.affine_grid(torch.eye(2, 3, device=s1.device).unsqueeze(0).expand(B, -1, -1), s1.size(), align_corners=False)
             grid_f = base + flow.permute(0, 2, 3, 1)
-            s1_aligned = F.grid_sample(s1_coarse, grid_f, align_corners=False, padding_mode='reflection')
-
-            return s1_aligned
+            return F.grid_sample(s1_coarse, grid_f, align_corners=False, padding_mode='reflection')
         else:
-            return s1_coarse_feat
+            return s1_coarse
 
 class BlurPoolV2(nn.Module):
     def __init__(self, channels, pad_type='reflect', filt_size=4, stride=2, pad_off=0):
