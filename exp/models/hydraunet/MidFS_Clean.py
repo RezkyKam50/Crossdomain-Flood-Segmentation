@@ -275,22 +275,23 @@ class FGE(nn.Module):
 
 class SatelliteSTN(nn.Module):
     def __init__(
-            self, 
-            s1_channels, 
-            s2_channels, 
-            feat_dim, 
-            fge=True, 
+            self,
+            s1_channels,
+            s2_channels,
+            feat_dim,
+            fge=True,
             sc_soma=False,
             fine_loc_opt=True
             ):
         super().__init__()
-        '''Predicts x,y shifts, resamples pixels'''
+        """Predicts x,y shifts, resamples pixels."""
+        self.fine_loc_opt = fine_loc_opt
+
         self.s1_proj = nn.Sequential(nn.Conv2d(s1_channels, feat_dim, 1), nn.ReLU())
         self.s2_proj = nn.Sequential(nn.Conv2d(s2_channels, feat_dim, 1), nn.ReLU())
-        self.fge = fge
-        if fge:
-            self.fge_s1 = FGE(feat_dim, sc_soma)
-            self.fge_s2 = FGE(feat_dim, sc_soma)
+
+        self.fge_s1 = FGE(feat_dim, sc_soma) if fge else nn.Identity()
+        self.fge_s2 = FGE(feat_dim, sc_soma) if fge else nn.Identity()
 
         fused_ch = feat_dim * 2
 
@@ -306,7 +307,6 @@ class SatelliteSTN(nn.Module):
         self.coarse_loc[-1].bias.data.copy_(
             torch.tensor([1, 0, 0, 0, 1, 0], dtype=torch.float))
 
-        self.fine_loc_opt = fine_loc_opt
         if fine_loc_opt:
             self.fine_loc = nn.Sequential(
                 nn.Conv2d(fused_ch, 64, 3, padding=1), nn.ReLU(),
@@ -316,31 +316,29 @@ class SatelliteSTN(nn.Module):
             )
 
     def forward(self, s1, s2):
-        s1_feat = self.s1_proj(s1)
-        s2_feat = self.s2_proj(s2)
-        if self.fge:
-            s1_feat = self.fge_s1(s1_feat)
-            s2_feat = self.fge_s2(s2_feat)
+        s1_enh = self.fge_s1(self.s1_proj(s1))
+        s2_enh = self.fge_s2(self.s2_proj(s2))
 
-        fused = torch.cat([s1_feat, s2_feat], dim=1)
+        fused = torch.cat([s1_enh, s2_enh], dim=1)
         theta = self.coarse_loc(fused).view(-1, 2, 3)
         grid_c = F.affine_grid(theta, s1.size(), align_corners=False)
-        s1_coarse = F.grid_sample(s1, grid_c, align_corners=False, padding_mode='reflection')
+        s1_coarse = F.grid_sample(s1, grid_c, align_corners=False,
+                                   padding_mode='reflection')
 
-        if self.fine_loc_opt:
-            if self.fge:
-                s1_coarse_feat = self.fge_s1(self.s1_proj(s1_coarse))
-            else:
-                s1_coarse_feat = self.s1_proj(s1_coarse)
-
-            fused2 = torch.cat([s1_coarse_feat, s2_feat], dim=1)
-            flow = self.fine_loc(fused2) * 0.1
-            B, _, H, W = s1.shape
-            base = F.affine_grid(torch.eye(2, 3, device=s1.device).unsqueeze(0).expand(B, -1, -1), s1.size(), align_corners=False)
-            grid_f = base + flow.permute(0, 2, 3, 1)
-            return F.grid_sample(s1_coarse, grid_f, align_corners=False, padding_mode='reflection')
-        else:
+        if not self.fine_loc_opt:
             return s1_coarse
+
+        s1_coarse_enh = self.fge_s1(self.s1_proj(s1_coarse))
+        fused2 = torch.cat([s1_coarse_enh, s2_enh], dim=1)
+        flow = self.fine_loc(fused2) * 0.1
+
+        B, _, H, W = s1.shape
+        base = F.affine_grid(
+            torch.eye(2, 3, device=s1.device).unsqueeze(0).expand(B, -1, -1),
+            s1.size(), align_corners=False)
+        grid_f = base + flow.permute(0, 2, 3, 1)
+        return F.grid_sample(s1_coarse, grid_f, align_corners=False,
+                              padding_mode='reflection')
 
 class BlurPoolV2(nn.Module):
     def __init__(self, channels, pad_type='reflect', filt_size=4, stride=2, pad_off=0):
