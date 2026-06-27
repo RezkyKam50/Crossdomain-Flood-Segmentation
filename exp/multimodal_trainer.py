@@ -556,42 +556,42 @@ def main(args):
             #     align_modality=False,
             #     weighted_fusion=False
             # ),
-            "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_AttnHeads_16": DSUNetMidFS_SharedEncoder(
+            "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_AttnHeads_1": DSUNetMidFS_SharedEncoder(
                 cfg=Config_DSUnet,
                 use_sdpa=True,
                 align_modality=True,
                 fge=True,
                 sc_soma=False,
                 fine_loc_opt=True,
-                attn_heads=16
+                attn_heads=1
             ),
-            "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_AttnHeads_8": DSUNetMidFS_SharedEncoder(
-                cfg=Config_DSUnet,
-                use_sdpa=True,
-                align_modality=True,
-                fge=True,
-                sc_soma=False,
-                fine_loc_opt=True,
-                attn_heads=8
-            ),
-            "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_AttnHeads_4": DSUNetMidFS_SharedEncoder(
-                cfg=Config_DSUnet,
-                use_sdpa=True,
-                align_modality=True,
-                fge=True,
-                sc_soma=False,
-                fine_loc_opt=True,
-                attn_heads=4
-            ),
-            "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_AttnHeads_2": DSUNetMidFS_SharedEncoder(
-                cfg=Config_DSUnet,
-                use_sdpa=True,
-                align_modality=True,
-                fge=True,
-                sc_soma=False,
-                fine_loc_opt=True,
-                attn_heads=2
-            ),
+            # "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_AttnHeads_8": DSUNetMidFS_SharedEncoder(
+            #     cfg=Config_DSUnet,
+            #     use_sdpa=True,
+            #     align_modality=True,
+            #     fge=True,
+            #     sc_soma=False,
+            #     fine_loc_opt=True,
+            #     attn_heads=8
+            # ),
+            # "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_AttnHeads_4": DSUNetMidFS_SharedEncoder(
+            #     cfg=Config_DSUnet,
+            #     use_sdpa=True,
+            #     align_modality=True,
+            #     fge=True,
+            #     sc_soma=False,
+            #     fine_loc_opt=True,
+            #     attn_heads=4
+            # ),
+            # "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_AttnHeads_2": DSUNetMidFS_SharedEncoder(
+            #     cfg=Config_DSUnet,
+            #     use_sdpa=True,
+            #     align_modality=True,
+            #     fge=True,
+            #     sc_soma=False,
+            #     fine_loc_opt=True,
+            #     attn_heads=2
+            # ),
         }
 
         seed_results = []
