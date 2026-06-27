@@ -6,17 +6,9 @@ from torchvision.models.segmentation import (
     deeplabv3_mobilenet_v3_large
 )
 from models.deeplab import DeepLabWrapper
-
-from models.hydraunet.UNet import UNet
-from models.hydraunet.UNetTP import UNet3Plus
-from models.hydraunet.DSUnetExp import DSUnetExp          # Dual Modality Classical UNet
-from models.hydraunet.MidFS_Clean import DSUNetMidFS_SharedEncoder
-from models.hydraunet.EarlyFSClean import EarlyFusionUNet
-from models.hydraunet.LateFS_Clean import DSUNetLateFS
-
-from models.hydraunet.DSUnet import DSUNet
 from models.transunet import TransUNet, TransUNetWrapper
-
+from models.hydraunet.MidFS_Clean import *
+from models.hydraunet.StableModel import *
 
 
 from models.hydraunet.config import (
@@ -550,48 +542,12 @@ def main(args):
         bolivia_loader = get_loader_MM(args.data_path, DatasetType.BOLIVIA.value, args)
     
         models = {
-            # "SeparateEncoder_WeakStrong_1x1_3x3_SameTopology_Blurpool": DSUNetMidFS_SepEncoder(
-            #     cfg=Config_DSUnet,
-            #     use_sdpa=False,
-            #     align_modality=False,
-            #     weighted_fusion=False
-            # ),
-            "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_AttnHeads_1": DSUNetMidFS_SharedEncoder(
+            "CleanModel_OpticalSarDEM": DSUNetMidFS(
                 cfg=Config_DSUnet,
                 use_sdpa=True,
                 align_modality=True,
-                fge=True,
-                sc_soma=False,
-                fine_loc_opt=True,
-                attn_heads=1
-            ),
-            # "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_AttnHeads_8": DSUNetMidFS_SharedEncoder(
-            #     cfg=Config_DSUnet,
-            #     use_sdpa=True,
-            #     align_modality=True,
-            #     fge=True,
-            #     sc_soma=False,
-            #     fine_loc_opt=True,
-            #     attn_heads=8
-            # ),
-            # "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_AttnHeads_4": DSUNetMidFS_SharedEncoder(
-            #     cfg=Config_DSUnet,
-            #     use_sdpa=True,
-            #     align_modality=True,
-            #     fge=True,
-            #     sc_soma=False,
-            #     fine_loc_opt=True,
-            #     attn_heads=4
-            # ),
-            # "SharedEncoder_WeakStrong_1x1_3x3_SameTopology_AttnHeads_2": DSUNetMidFS_SharedEncoder(
-            #     cfg=Config_DSUnet,
-            #     use_sdpa=True,
-            #     align_modality=True,
-            #     fge=True,
-            #     sc_soma=False,
-            #     fine_loc_opt=True,
-            #     attn_heads=2
-            # ),
+                bott_attn=True
+            )
         }
 
         seed_results = []

@@ -6,78 +6,6 @@ import math
 from torch import Tensor
 from typing import Tuple
 
-class DropBlock2D(nn.Module):
-    r"""Randomly zeroes 2D spatial blocks of the input tensor.
-
-    As described in the paper
-    `DropBlock: A regularization method for convolutional networks`_ ,
-    dropping whole blocks of feature map allows to remove semantic
-    information as compared to regular dropout.
-
-    Args:
-        drop_prob (float): probability of an element to be dropped.
-        block_size (int): size of the block to drop
-
-    Shape:
-        - Input: `(N, C, H, W)`
-        - Output: `(N, C, H, W)`
-
-    .. _DropBlock: A regularization method for convolutional networks:
-       https://arxiv.org/abs/1810.12890
-
-    """
-
-    def __init__(self, drop_prob, block_size):
-        super(DropBlock2D, self).__init__()
-
-        self.drop_prob = drop_prob
-        self.block_size = block_size
-
-    def forward(self, x):
-        # shape: (bsize, channels, height, width)
-
-        assert x.dim() == 4, \
-            "Expected input with 4 dimensions (bsize, channels, height, width)"
-
-        if not self.training or self.drop_prob == 0.:
-            return x
-        else:
-            # get gamma value
-            gamma = self._compute_gamma(x)
-
-            # sample mask
-            mask = (torch.rand(x.shape[0], *x.shape[2:]) < gamma).float()
-
-            # place mask on input device
-            mask = mask.to(x.device)
-
-            # compute block mask
-            block_mask = self._compute_block_mask(mask)
-
-            # apply block mask
-            out = x * block_mask[:, None, :, :]
-
-            # scale output
-            out = out * block_mask.numel() / block_mask.sum()
-
-            return out
-
-    def _compute_block_mask(self, mask):
-        block_mask = F.max_pool2d(input=mask[:, None, :, :],
-                                  kernel_size=(self.block_size, self.block_size),
-                                  stride=(1, 1),
-                                  padding=self.block_size // 2)
-
-        if self.block_size % 2 == 0:
-            block_mask = block_mask[:, :, :-1, :-1]
-
-        block_mask = 1 - block_mask.squeeze(1)
-
-        return block_mask
-
-    def _compute_gamma(self, x):
-        return self.drop_prob / (self.block_size ** 2)
-
 # class ChannelAttention(nn.Module):
 #     def __init__(self, in_planes, ratio=None):
 #         super(ChannelAttention, self).__init__()
@@ -94,36 +22,13 @@ class DropBlock2D(nn.Module):
 #         maxout = self.sharedMLP(self.max_pool(x))
 #         return F.softmax(avgout + maxout, dim=1)
 
-class SelfAttention2D(nn.Module):
-    def __init__(self, in_channels, num_heads=4):
-        super().__init__()
-        self.norm = nn.GroupNorm(1, in_channels)
-        self.attn = nn.MultiheadAttention(in_channels, num_heads, batch_first=True)
-
-    def forward(self, x):
-        B, C, H, W = x.shape
-        # flatten spatial dims -> (B, H*W, C)
-        x_flat = self.norm(x).view(B, C, -1).permute(0, 2, 1)
-        attn_out, _ = self.attn(x_flat, x_flat, x_flat)
-        # reshape back + residual
-        attn_out = attn_out.permute(0, 2, 1).view(B, C, H, W)
-        return x + attn_out
-
-class FusionProjection(nn.Module):
-    def __init__(self, dim):
-        super().__init__()
-        self.proj = nn.Sequential(
-            nn.Conv2d(dim * 2, dim, 1, bias=False)
-        )
-
-    def forward(self, x1, x2):
-        return self.proj(torch.cat([x1, x2], dim=1))
-
 class CrossModalAttention(nn.Module):
     """
     Each modality queries the other.
     x1 (query) attends to x2 (key/value) -> out1 = x1 + cross_attn(x1, x2)
     x2 (query) attends to x1 (key/value) -> out2 = x2 + cross_attn(x2, x1)
+
+    since s1 stream has dem & pw, we need the long range dependency.
     """
     def __init__(self, dim: int, num_heads: int = 8):
         super().__init__()
@@ -132,6 +37,7 @@ class CrossModalAttention(nn.Module):
         # shared attention for both directions
         self.attn_1to2 = nn.MultiheadAttention(dim, num_heads, batch_first=True)
         self.attn_2to1 = nn.MultiheadAttention(dim, num_heads, batch_first=True)
+
 
     def _flatten(self, x: Tensor) -> Tensor:
         # (B, C, H, W) -> (B, H*W, C)
@@ -161,22 +67,12 @@ class CrossModalAttention(nn.Module):
             x2 + self._restore(out2, shape2),
         )
 
-class FiLMLayer(nn.Module):
-    def __init__(self, cond_channels, feat_channels):
-        super().__init__()
-        self.norm  = nn.GroupNorm(1, feat_channels)  
-        self.gamma = nn.Conv2d(cond_channels, feat_channels, 1)
-        self.beta  = nn.Conv2d(cond_channels, feat_channels, 1)
-
-    def forward(self, x, cond):
-        return self.gamma(cond) * self.norm(x) + self.beta(cond)
-
 class GradientFilter(nn.Module):
     def __init__(self, in_channels, branch_channels, num_directions=8, kernel_size=3):
         super().__init__()
         self.num_directions = num_directions
         self.branches = nn.ModuleList()
-        angles = [0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5][:num_directions] # Notice backscatter angle for SAR
+        angles = [0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5][:num_directions] 
         for angle in angles:
             branch = nn.Conv2d(in_channels, branch_channels, kernel_size=kernel_size, padding=kernel_size//2, bias=False)
             weight = self.get_rotated_sobel_kernel(angle, in_channels, branch_channels, kernel_size)
@@ -227,7 +123,7 @@ class SC(nn.Module):
 
     def forward(self, x):
         return self.norm(self.pw(self.dw(x)))
-    
+
 class FGE(nn.Module):
     def __init__(self, in_channels):
         super().__init__()
@@ -296,6 +192,8 @@ class FGE(nn.Module):
         output = filtered + att_feat
         return output
 
+
+
 class SatelliteSTN(nn.Module):
     def __init__(self, s1_channels, s2_channels, feat_dim):
         super().__init__()
@@ -352,68 +250,118 @@ class SatelliteSTN(nn.Module):
         return s1_aligned
     
 
+# class DSUNetMidFS(nn.Module):
+#     def __init__(self, cfg):
+#         super(DSUNetMidFS, self).__init__()
+#         self._cfg = cfg
+
+#         out = cfg.MODEL.OUT_CHANNELS
+#         topology = cfg.MODEL.TOPOLOGY
+#         n_s1_bands = len(cfg.DATASET.SENTINEL1_BANDS) + 2 # dem, pw each 1ch = 2ch
+#         n_s2_bands = len(cfg.DATASET.SENTINEL2_BANDS)
+ 
+#         self.s1_stream = UNet(cfg, n_channels=n_s1_bands, n_classes=out,
+#                               topology=topology, enable_outc=False, weak=True, encoder_only=False)
+#         self.s2_stream = UNet(cfg, n_channels=n_s2_bands, n_classes=out,
+#                               topology=topology, enable_outc=False, weak=False, encoder_only=False)
+
+#         bottleneck_dim = topology[-1]
+
+#         self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=8)
+
+#         self.s1_aligner = SatelliteSTN(n_s1_bands, n_s2_bands, feat_dim=topology[0])
+
+#         self.fusion_weight = nn.Parameter(torch.ones(2, topology[0]) / 2)
+
+#         self.out_conv = OutConv(topology[0], out)
+
+#     def forward(self, s1_img, s2_img, dem, pw):
+#         s1_img = torch.cat([s1_img, dem, pw], dim=1)
+#         s1_img = self.s1_aligner(s1_img, s2_img)
+
+#         s1_skips = self.s1_stream.encode(s1_img)
+#         s2_skips = self.s2_stream.encode(s2_img)
+
+#         s1_bot, s2_bot = self.bottleneck_cma(s1_skips[-1], s2_skips[-1])
+
+#         s1_skips[-1] = s1_bot
+#         s2_skips[-1] = s2_bot
+
+#         s1_feature = self.s1_stream.decode(s1_skips)
+#         s2_feature = self.s2_stream.decode(s2_skips)
+
+#         w = torch.softmax(self.fusion_weight, dim=0)
+#         combined = (w[0].view(1, -1, 1, 1) * s1_feature) + (w[1].view(1, -1, 1, 1) * s2_feature)
+
+#         return self.out_conv(combined)
+
 class DSUNetMidFS(nn.Module):
-    def __init__(self, cfg):
-        super(DSUNetMidFS, self).__init__()
+    def __init__(self, cfg, use_sdpa=False, align_modality=True, bott_attn=True):
+        super().__init__()
         self._cfg = cfg
+        self.use_sdpa = use_sdpa
 
         out = cfg.MODEL.OUT_CHANNELS
         topology = cfg.MODEL.TOPOLOGY
-        n_s1_bands = len(cfg.DATASET.SENTINEL1_BANDS)
+        n_s1_bands = len(cfg.DATASET.SENTINEL1_BANDS) + 1
         n_s2_bands = len(cfg.DATASET.SENTINEL2_BANDS)
- 
+
         self.s1_stream = UNet(cfg, n_channels=n_s1_bands, n_classes=out,
-                              topology=topology, enable_outc=False, weak=True)
+                              topology=topology, enable_outc=False, weak=True, encoder_only=True)
         self.s2_stream = UNet(cfg, n_channels=n_s2_bands, n_classes=out,
-                              topology=topology, enable_outc=False, weak=False)
+                              topology=topology, enable_outc=False, weak=False, encoder_only=False)
 
         bottleneck_dim = topology[-1]
 
-        self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=8)
-        self.bottleneck_projection = FusionProjection(bottleneck_dim)
+        if bott_attn:
+            self.bottleneck_cma = CrossModalAttention(bottleneck_dim, num_heads=16) 
+        self.bott_attn = bott_attn
 
-        self.s1_aligner = SatelliteSTN(n_s1_bands, n_s2_bands, feat_dim=topology[0])
-        self.dp_s1 = DropBlock2D(drop_prob=0.25, block_size=12)
-        self.dp_s2 = DropBlock2D(drop_prob=0.25, block_size=12)
-        self.s1_attn = SelfAttention2D(bottleneck_dim, num_heads=4)
-        self.s2_attn = SelfAttention2D(bottleneck_dim, num_heads=4)
+        if align_modality:
+            self.s1_aligner = SatelliteSTN(n_s1_bands, n_s2_bands, feat_dim=topology[0])
+        self.align_modality = align_modality
  
-        self.dem_film = FiLMLayer(cond_channels=1, feat_channels=bottleneck_dim)
-        self.pw_film  = FiLMLayer(cond_channels=1, feat_channels=bottleneck_dim)
+        skip_channels = topology + [topology[-1]]  # Add extra bottleneck channel
 
-        self.fusion_weight = nn.Parameter(torch.ones(2, topology[0]) / 2)
+        # Each skip has shape (B, C, H, W); cat gives 2C, project back to C
+        self.skip_fuse = nn.ModuleList([ 
+            nn.Sequential(
+                nn.Conv2d(c * 2, c, 1),
+                nn.BatchNorm2d(c),
+                nn.ReLU(inplace=True)
+            ) 
+            for c in skip_channels
+        ])
+
+        self.shared_decoder = self.s2_stream  
+
         self.out_conv = OutConv(topology[0], out)
 
+
     def forward(self, s1_img, s2_img, dem, pw):
+        s1_img = torch.cat([s1_img, dem], dim=1)
 
-        s1_img = self.s1_aligner(s1_img, s2_img)
+        if self.align_modality:
+            s1_img = self.s1_aligner(s1_img, s2_img)
 
-        s1_skips = self.s1_stream.encode(s1_img)
+        s1_skips = self.s1_stream.encode(s1_img)   # [x1, x2, ..., bottleneck]
         s2_skips = self.s2_stream.encode(s2_img)
 
-        s1_bot, s2_bot = self.bottleneck_cma(s1_skips[-1], s2_skips[-1])
-        residual_proj = self.bottleneck_projection(s1_skips[-1], s2_skips[-1])
-        
-        bot_size = s1_bot.shape[2:]
-        dem_ds = F.interpolate(dem, size=bot_size, mode='bilinear', align_corners=False)
-        pw_ds  = F.interpolate(pw,  size=bot_size, mode='bilinear', align_corners=False)
-        s1_bot = self.dem_film(s1_bot, dem_ds)
-        s1_bot = self.pw_film(s1_bot,  pw_ds)
+        if self.bott_attn:
+            if self.use_sdpa:
+                s1_bot, s2_bot = self.bottleneck_cma(s1_skips[-1], s2_skips[-1])
+                s1_skips[-1] = s1_bot
+                s2_skips[-1] = s2_bot
 
-        s1_skips[-1] = self.dp_s1(self.s1_attn(s1_bot)) + residual_proj
-        s2_skips[-1] = self.dp_s2(self.s2_attn(s2_bot)) + residual_proj
-
-        s1_feature = self.s1_stream.decode(s1_skips)
-        s2_feature = self.s2_stream.decode(s2_skips)
-
-        w = torch.softmax(self.fusion_weight, dim=0)
-        combined = (w[0].view(1, -1, 1, 1) * s1_feature) + (w[1].view(1, -1, 1, 1) * s2_feature)
-
-        return self.out_conv(combined)
+        fused_skips = [
+            self.skip_fuse[i](torch.cat([s1, s2], dim=1))
+            for i, (s1, s2) in enumerate(zip(s1_skips, s2_skips))
+        ]
+        feature = self.shared_decoder.decode(fused_skips)
+        return self.out_conv(feature)
 
 class UNet(nn.Module):
-
-    def __init__(self, cfg, n_channels=None, n_classes=None, topology=None, enable_outc=True, weak=None):
+    def __init__(self, cfg, n_channels=None, n_classes=None, topology=None, enable_outc=True, weak=None, encoder_only=False):
         super(UNet, self).__init__()
         self._cfg = cfg
 
@@ -423,8 +371,7 @@ class UNet(nn.Module):
 
         first_chan = topology[0]
         self.inc = InConv(n_channels, first_chan, ConvBlock if not weak else WeakConvBlock)
-        self.enable_outc = enable_outc
-        self.outc = OutConv(first_chan, n_classes)
+        self.enable_outc = enable_outc if not encoder_only else False
 
         down_topo = topology
         down_dict = OrderedDict()
@@ -440,15 +387,17 @@ class UNet(nn.Module):
             up_topo.append(out_dim)
         self.down_seq = nn.ModuleDict(down_dict)
 
-        for idx in reversed(range(n_layers)):
-            is_not_last_layer = idx != 0
-            x1_idx = idx
-            x2_idx = idx - 1 if is_not_last_layer else idx
-            in_dim = up_topo[x1_idx] * 2
-            out_dim = up_topo[x2_idx]
-            up_dict[f'up{idx + 1}'] = Up(in_dim, out_dim, ConvBlock if not weak else WeakConvBlock)
-        self.up_seq = nn.ModuleDict(up_dict)
-
+        if not encoder_only:
+            for idx in reversed(range(n_layers)):
+                is_not_last_layer = idx != 0
+                x1_idx = idx
+                x2_idx = idx - 1 if is_not_last_layer else idx
+                in_dim = up_topo[x1_idx] * 2
+                out_dim = up_topo[x2_idx]
+                up_dict[f'up{idx + 1}'] = Up(in_dim, out_dim, ConvBlock if not weak else WeakConvBlock)
+            self.up_seq = nn.ModuleDict(up_dict)
+            self.outc = OutConv(first_chan, n_classes)
+            
     def encode(self, x):
         x1 = self.inc(x)
         inputs = [x1]
@@ -467,6 +416,7 @@ class UNet(nn.Module):
     def forward(self, x):
         return self.decode(self.encode(x))
 
+
 class ConvBlock(nn.Module):
     def __init__(self, in_ch, out_ch):
         super().__init__()
@@ -478,6 +428,7 @@ class ConvBlock(nn.Module):
     def forward(self, x):
         out = self.conv(x)
         return out
+
 
 class WeakConvBlock(nn.Module):
     def __init__(self, in_ch, out_ch):
@@ -492,6 +443,7 @@ class WeakConvBlock(nn.Module):
         out = self.conv(x)
         return out
 
+
 class InConv(nn.Module):
     def __init__(self, in_ch, out_ch, conv_block):
         super(InConv, self).__init__()
@@ -500,6 +452,7 @@ class InConv(nn.Module):
     def forward(self, x):
         return self.conv(x)
 
+
 class OutConv(nn.Module):
     def __init__(self, in_ch, out_ch):
         super(OutConv, self).__init__()
@@ -507,6 +460,7 @@ class OutConv(nn.Module):
 
     def forward(self, x):
         return self.projection(x)
+
 
 class Down(nn.Module):
     def __init__(self, in_ch, out_ch, conv_block):
@@ -518,6 +472,7 @@ class Down(nn.Module):
 
     def forward(self, x):
         return self.mpconv(x)
+
 
 class Up(nn.Module):
     def __init__(self, in_ch, out_ch, conv_block):
@@ -532,4 +487,5 @@ class Up(nn.Module):
         x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
                          diffY // 2, diffY - diffY // 2])
         return self.conv(torch.cat([x2, x1], dim=1))
+
  
