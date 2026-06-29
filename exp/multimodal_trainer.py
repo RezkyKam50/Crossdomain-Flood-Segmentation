@@ -542,7 +542,7 @@ def main(args):
         bolivia_loader = get_loader_MM(args.data_path, DatasetType.BOLIVIA.value, args)
     
         models = {
-            "CleanModel_OpticalSarDEM": DSUNetMidFS(
+            "CleanModel_OpticalSarPW": DSUNetMidFS(
                 cfg=Config_DSUnet,
                 use_sdpa=True,
                 align_modality=True,

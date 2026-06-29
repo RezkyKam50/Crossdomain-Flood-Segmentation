@@ -339,7 +339,7 @@ class DSUNetMidFS(nn.Module):
 
 
     def forward(self, s1_img, s2_img, dem, pw):
-        s1_img = torch.cat([s1_img, dem], dim=1)
+        s1_img = torch.cat([s1_img, pw], dim=1)
 
         if self.align_modality:
             s1_img = self.s1_aligner(s1_img, s2_img)
