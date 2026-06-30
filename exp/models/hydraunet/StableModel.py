@@ -303,7 +303,7 @@ class DSUNetMidFS(nn.Module):
 
         out = cfg.MODEL.OUT_CHANNELS
         topology = cfg.MODEL.TOPOLOGY
-        n_s1_bands = len(cfg.DATASET.SENTINEL1_BANDS) + 1
+        n_s1_bands = len(cfg.DATASET.SENTINEL1_BANDS) 
         n_s2_bands = len(cfg.DATASET.SENTINEL2_BANDS)
 
         self.s1_stream = UNet(cfg, n_channels=n_s1_bands, n_classes=out,
@@ -339,7 +339,7 @@ class DSUNetMidFS(nn.Module):
 
 
     def forward(self, s1_img, s2_img, dem, pw):
-        s1_img = torch.cat([s1_img, pw], dim=1)
+        # s1_img = torch.cat([s1_img, pw], dim=1)
 
         if self.align_modality:
             s1_img = self.s1_aligner(s1_img, s2_img)
