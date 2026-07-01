@@ -5,10 +5,12 @@ from torchvision.models.segmentation import (
     deeplabv3_resnet50, 
     deeplabv3_mobilenet_v3_large
 )
-from models.deeplab import DeepLabWrapper
-from models.transunet import TransUNet, TransUNetWrapper
+
 from models.hydraunet.MidFS_Clean import *
 from models.hydraunet.StableModel import *
+from models.u_net import UNet
+from models.basnet import BASNet
+from models.fusion_network import Resnet50UNet
 
 
 from models.hydraunet.config import (
@@ -542,11 +544,24 @@ def main(args):
         bolivia_loader = get_loader_MM(args.data_path, DatasetType.BOLIVIA.value, args)
     
         models = {
-            "CleanModel_OpticalSar": DSUNetMidFS(
-                cfg=Config_DSUnet,
-                use_sdpa=True,
-                align_modality=True,
-                bott_attn=True
+            # "CleanModel_OpticalSar": DSUNetMidFS(
+            #     cfg=Config_DSUnet,
+            #     use_sdpa=True,
+            #     align_modality=True,
+            #     bott_attn=True
+            # )
+            "UNet_Optical": UNet(
+                in_channels=6,
+                out_channels=2
+            ),
+            "BASNet_OpticalSAR": BASNet(
+                n_channels=8,
+                n_classes=2
+            ),
+            "AttentiveNetwork_SARDEMPW": Resnet50UNet(
+                n_classes=2,
+                in_channels_img=3,
+                in_channels_inf=3
             )
         }
 
