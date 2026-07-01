@@ -107,12 +107,6 @@ class UNet(nn.Module):
         x = self.up4(x, x1)
  
         return x
-
-    def forward(self, x, x2, x3, x4): # pass other modality for train loop compatiblity
- 
-        x = self.forward_features(x)
-        x = self.out(x)
-        return x
     
 
 def ConvBlock(in_channels, out_channels, kernel_size=(3, 3), stride=(1, 1), padding='same',
